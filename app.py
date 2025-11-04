@@ -26,35 +26,44 @@ mimetypes.add_type('font/woff2', '.woff2')
 mimetypes.add_type('font/woff', '.woff')
 # ---------- Configuration ----------
 load_dotenv()
-EVENT_TITLE = os.getenv("EVENT_TITLE", "Winterhochzeit")
+EVENT_TITLE = os.getenv("EVENT_TITLE", "Winterhochzeit Jasmin & Philipp")
 # Use local time string "YYYY-MM-DD HH:MM" (24h). We'll parse and treat as naive local.
 EVENT_DATETIME_STR = os.getenv("EVENT_DATETIME", "2026-12-05 14:00")
 EVENT_LOCATION_NAME = os.getenv("EVENT_LOCATION_NAME", "Kurgarten Bad Dürrheim")
 EVENT_LOCATION_ADDRESS = os.getenv("EVENT_LOCATION_ADDRESS", "Luisenstraße 16, 78073 Bad Dürrheim")
 RSVP_DEADLINE_STR = os.getenv("RSVP_DEADLINE", "2026-04-01")
-# muss ich noch ändern!
-ADMIN_KEY = os.getenv("ADMIN_KEY", "test")
-
-SMTP_HOST="smtp-mail.outlook.com"
-SMTP_PORT=587
-SMTP_USER="username"
-SMTP_PASS="dein_passwort"
-MAIL_FROM="robot@example.com"
-MAIL_TO="du@example.com,partner@example.com"
 
 # ---------- Flask app ----------
 IS_DEV = os.getenv("FLASK_DEBUG", "0") == "1" or os.getenv("ENV", "").lower() == "development"
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "0" if IS_DEV else "1") == "1"
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///rsvp.db")
+# Stelle sicher, dass die DB IMMER an einem existierenden, beschreibbaren Ort liegt
+# -> Flask "instance"-Ordner (standard: <projekt>/instance)
+os.makedirs(app.instance_path, exist_ok=True)
+
+db_file = os.getenv("DATABASE_FILE", "rsvp.db")
+db_abs_path = os.path.join(app.instance_path, db_file)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{db_abs_path}"  # absolute, OS-sicher
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+app.logger.info(f"instance_path = {app.instance_path}")
+app.logger.info(f"DB path      = {db_abs_path}")
+app.logger.info(f"SQLA URI     = {app.config['SQLALCHEMY_DATABASE_URI']}")
+
+
+# app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///rsvp.db")
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Grundkonfiguration
 app.config.update(
     DEBUG=IS_DEV is True,
     ENV="development" if IS_DEV else "production",
-    SECRET_KEY=os.getenv("SECRET_KEY", "CHANGE_ME_32+_CHARS"),
+    SECRET_KEY=os.getenv("SECRET_KEY"),
 
     # nur in Produktion strikt
     SESSION_COOKIE_SECURE=not IS_DEV,
@@ -65,10 +74,22 @@ app.config.update(
 )
 
 
-EVENT_TITLE = os.getenv("EVENT_TITLE", "Winterhochzeit")
-ADMIN_USER  = os.getenv("ADMIN_USER")  # z.B. "admin"
-ADMIN_PASS  = os.getenv("ADMIN_PASS")  # z.B. langer zufälliger String
+EVENT_TITLE = os.getenv("EVENT_TITLE")
+ADMIN_USER  = os.getenv("ADMIN_USER", "admin")  # z.B. "admin"
+ADMIN_PASS  = os.getenv("ADMIN_PASS", "changeme")  # z.B. langer zufälliger String
 # ADMIN_KEY kannst du weiterverwenden, ist aber nach BasicAuth nicht mehr nötig
+
+# Basic Auth für Admin
+if ADMIN_USER and ADMIN_PASS:
+    app.config["BASIC_AUTH_USERNAME"] = ADMIN_USER
+    app.config["BASIC_AUTH_PASSWORD"] = ADMIN_PASS
+    basic_auth = BasicAuth(app)
+else:
+    basic_auth = None  # fallback: kein Adminschutz (nicht empfohlen)
+app.logger.info(f"ADMIN_USER: {repr(ADMIN_USER)}")
+app.logger.info(f"ADMIN_PASS set: {bool(ADMIN_PASS)}")
+app.logger.info(f"Using BasicAuth: {basic_auth is not None}")
+
 
 # Security-Header / HTTPS / CSP
 csp = {
@@ -91,17 +112,6 @@ CSRFProtect(app)
 
 # Rate-Limiting
 limiter = Limiter(get_remote_address, app=app, default_limits=["200/hour"])
-
-# Basic Auth für Admin
-if ADMIN_USER and ADMIN_PASS:
-    app.config["BASIC_AUTH_USERNAME"] = ADMIN_USER
-    app.config["BASIC_AUTH_PASSWORD"] = ADMIN_PASS
-    basic_auth = BasicAuth(app)
-else:
-    basic_auth = None  # fallback: kein Adminschutz (nicht empfohlen)
-app.logger.info(f"ADMIN_USER: {repr(ADMIN_USER)}")
-app.logger.info(f"ADMIN_PASS set: {bool(ADMIN_PASS)}")
-app.logger.info(f"Using BasicAuth: {basic_auth is not None}")
 
 # Reverse-proxy fix (useful on Vercel/Render/Heroku etc.)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_host=1)
@@ -198,16 +208,13 @@ def send_rsvp_mail(entry: RSVP):
 def admin_protected(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
-        # 1) BasicAuth bevorzugt, wenn konfiguriert
-        if basic_auth is not None:
-            if not basic_auth.authenticate():
-                return basic_auth.challenge()  # 401 + Browser-Login
-            return view(*args, **kwargs)
-        # 2) Fallback: URL-Key
-        if request.args.get("key") != ADMIN_KEY:
-            abort(403)
+        if basic_auth is None:
+            abort(403)  # Admin nicht konfiguriert
+        if not basic_auth.authenticate():
+            return basic_auth.challenge()
         return view(*args, **kwargs)
     return wrapper
+
 # ---------- Routes ----------
 @app.route("/")
 def index():
@@ -288,13 +295,7 @@ INVITED_TOTAL = int(os.getenv("INVITED_TOTAL", "0"))
 @limiter.limit("10/minute")
 @admin_protected
 def admin_dashboard():
-    # Auth wie bei dir: BasicAuth, sonst Fallback ADMIN_KEY (optional)
-    if basic_auth is not None and not basic_auth.authenticate():
-        return basic_auth.challenge()
-    else:
-        if basic_auth is None and request.args.get("key") != ADMIN_KEY:
-            abort(403)
-
+    
     # Kennzahlen
     total = db.session.query(RSVP).count()
     yes_count = db.session.query(RSVP).filter(RSVP.attendance == "yes").count()
@@ -351,14 +352,7 @@ def admin_dashboard():
 @limiter.limit("10/minute")
 @admin_protected
 def admin_rsvps():
-    # Auth
-    if basic_auth is not None and not basic_auth.authenticate():
-        return basic_auth.challenge()
-    else:
-        # Fallback über ADMIN_KEY optional weiter erlauben:
-        if basic_auth is None and request.args.get("key") != ADMIN_KEY:
-            abort(403)
-
+    
     attendance = (request.args.get("attendance") or "").strip()
     q = (request.args.get("q") or "").strip()
     page = max(int(request.args.get("page", 1)), 1)
@@ -387,12 +381,7 @@ def admin_rsvps():
 @limiter.limit("10/minute")
 @admin_protected
 def admin_rsvps_update():
-    if basic_auth is not None and not basic_auth.authenticate():
-        return basic_auth.challenge()
-    else:
-        if basic_auth is None and request.args.get("key") != ADMIN_KEY:
-            abort(403)
-
+    
     rid = request.form.get("id")
     if not rid:
         abort(400)
@@ -424,11 +413,6 @@ def admin_rsvps_update():
 @limiter.limit("10/minute")
 @admin_protected
 def admin_rsvps_delete():
-    if basic_auth is not None and not basic_auth.authenticate():
-        return basic_auth.challenge()
-    else:
-        if basic_auth is None and request.args.get("key") != ADMIN_KEY:
-            abort(403)
 
     rid = request.form.get("id")
     if not rid:
@@ -446,14 +430,6 @@ def admin_rsvps_delete():
 @limiter.limit("5/minute")
 @admin_protected
 def export_csv():
-    # Basic Auth, falls gesetzt – sonst Fallback auf ADMIN_KEY
-    if basic_auth is not None:
-        if not basic_auth.authenticate():
-            return basic_auth.challenge()
-    else:
-        key = request.args.get("key")
-        if key != ADMIN_KEY:
-            abort(403)
 
     rows = RSVP.query.order_by(RSVP.created_at.desc()).all()
 
