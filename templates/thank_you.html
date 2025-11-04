@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container" style="text-align:center">
+    <h1>Vielen Dank, {{ name or 'lieber Gast' }}!</h1>
+    <p class="lead">Deine Rückmeldung wurde erfolgreich gespeichert.</p>
+    <p>Wir freuen uns schon auf das gemeinsame Fest!</p>
+
+    <div class="ics-button-wrap">
+      <a class="btn btn--ghost btn--calendar" href="{{ url_for('event_ics') }}">
+        <span class="icon-check"></span>
+        In den Kalender speichern
+      </a>
+    </div>
+
+    <p style="margin-top:1.5rem">
+      <a class="btn btn--ghost" href="{{ url_for('index') }}">Zurück zur Startseite</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

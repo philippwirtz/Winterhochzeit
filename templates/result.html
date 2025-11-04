@@ -1,0 +1,19 @@
+{% extends "base.html" %} {% block content %}
+<section class="section">
+  <div class="container">
+    {% if ok %}
+    <h2>🎉 Danke!</h2>
+    {% else %}
+    <h2>⚠️ Hinweis</h2>
+    {% endif %}
+    <ul>
+      {% for m in messages %}
+      <li>{{ m }}</li>
+      {% endfor %}
+    </ul>
+    <p>
+      <a class="btn" href="{{ url_for('index') }}">Zurück zur Startseite</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

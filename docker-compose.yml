@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  app:
+    build: ./app
+    env_file: ./app/.env
+    # WICHTIG: persistente DB unter /app/storage
+    volumes:
+      - rsvp_storage:/app/storage
+    restart: always
+
+  caddy:
+    image: caddy:latest
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: always
+
+volumes:
+  rsvp_storage:
+  caddy_data:
+  caddy_config:

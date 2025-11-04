@@ -1,0 +1,238 @@
+{% extends "base.html" %} {% block head %}
+<!-- Optional, aktualisiert die Seite alle 30 Sekunden für den Countdown (ohne JS) -->
+{% endblock %} 
+{% block content %}
+<a id="top"></a>
+<section class="hero" id="hero" aria-label="Einladung und Countdown">
+    <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"
+        alt="Winterlandschaft mit sanftem Schneefall" />
+    <div class="hero__content">
+        <h1>
+            <span class="nowrap">{{ event_title }}</span>
+            <span class="accent">{{ event_dt.year }}</span>
+        </h1>
+        <p class="lead">
+            Wir freuen uns, mit euch zu feiern!<br /><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong>
+        </p>
+        <div class="countdown" id="countdown" data-event="{{ event_dt.isoformat() }}">
+  <div><span id="cw">--</span><small>Wochen</small></div>
+  <div><span id="cd">--</span><small>Tage</small></div>
+  <div><span id="ch">--</span><small>Stunden</small></div>
+</div>
+<noscript>Countdown: {{ (event_dt - now()).days // 7 }} Wochen,
+{{ ((event_dt - now()).days % 7) }} Tage</noscript>
+
+        
+    </div>
+        <p class="muted">
+            Hinweis: Der Countdown wird serverseitig berechnet und alle 30s
+            aktualisiert.
+        </p>
+        <div class="hero__cta">
+            <a class="btn" href="#rsvp">Jetzt zusagen</a>
+            <a class="btn btn--ghost" href="#infos">Mehr Infos</a>
+        </div>
+    </div>
+</section>
+
+<section id="infos" class="section section--light">
+    <div class="container">
+        <h2>Alle Infos auf einen Blick</h2>
+        <div class="features">
+            <article class="feature">
+                <h3>Dresscode</h3>
+                <p>
+                    Festlich-warm: Denken Sie an <strong>Winter</strong>! Elegante
+                    Outfits, Mantel, Schal & bequeme Schuhe.
+                </p>
+            </article>
+            <article class="feature">
+                <h3>Live-Musik & DJ</h3>
+                <p>Ab 18:30 Uhr Band, danach DJ - Musikwünsche gern im RSVP angeben.</p>
+            </article>
+            <article class="feature">
+                <h3>Buffet</h3>
+                <p>
+                    Vielfältiges Buffet (auch vegetarisch/vegan). Allergien bitte im RSVP
+                    mitteilen.
+                </p>
+            </article>
+            <article class="feature">
+                <h3>Fotograf</h3>
+                <p>
+                    Es gibt eine Galerie. Wer nicht fotografiert werden möchte: Bitte vor
+                    Ort Bescheid geben.
+                </p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section id="ablauf" class="section">
+    <div class="container">
+        <h2>Tagesablauf</h2>
+        <ol class="timeline">
+            <li>
+                <time datetime="{{ event_dt.strftime('%Y-%m-%dT15:00') }}">15:00</time>
+                <div>
+                    <h3>Trauung</h3>
+                    <p>Begrüßung, Trauzeremonie & Auszug mit Funkenregen.</p>
+                </div>
+            </li>
+            <li>
+                <time datetime="{{ event_dt.strftime('%Y-%m-%dT16:00') }}">16:00</time>
+                <div>
+                    <h3>Empfang</h3>
+                    <p>
+                        Glühwein, Punsch & Häppchen im Innenhof (wärmende Feuerschalen
+                        vorhanden).
+                    </p>
+                </div>
+            </li>
+            <li>
+                <time datetime="{{ event_dt.strftime('%Y-%m-%dT18:30') }}">18:30</time>
+                <div>
+                    <h3>Buffet & Live-Musik</h3>
+                    <p>Buffeteröffnung, Reden & erster Tanz.</p>
+                </div>
+            </li>
+            <li>
+                <time datetime="{{ event_dt.strftime('%Y-%m-%dT21:30') }}">21:30</time>
+                <div>
+                    <h3>Party mit DJ</h3>
+                    <p>Open End - Bar & Mitternachtssnack.</p>
+                </div>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<section id="location" class="section section--light">
+    <div class="container">
+        <h2>Location & Anfahrt</h2>
+        <p>
+            <strong>{{ event_location_name }}</strong><br />{{ event_location_address
+            }}
+        </p>
+        <div class="map-wrap" role="region" aria-label="Karte der Location">
+            <iframe title="Karte"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=8.535510599613191%2C48.01650023164518%2C8.538021147251131%2C48.01766284331602&amp;layer=mapnik&amp;marker=48.0170815407576%2C8.53676587343216"
+                loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border: 0" aria-hidden="false">
+            </iframe>
+        </div>
+        <details class="travel-hints">
+            <summary>Anreise-Tipps</summary>
+            <ul>
+                <li>ÖPNV: Haltestelle „Winterruh Schloss“ (5 Min. Fußweg).</li>
+                <li>
+                    PKW: Parkplätze ausgeschildert - bitte Fahrgemeinschaften bilden.
+                </li>
+                <li>
+                    Shuttle: Hotel-Transfer zwischen 00:00-02:30 Uhr (alle 30 Min.).
+                </li>
+            </ul>
+        </details>
+    </div>
+</section>
+
+<section id="uebernachtung" class="section">
+    <div class="container">
+        <h2>Übernachtung</h2>
+        <p>
+            Wir haben in folgenden Hotels Zimmerkontingente hinterlegt (Stichwort „{{
+            event_title }}“):
+        </p>
+        <div class="cards">
+            <article class="card">
+                <h3>Hotel Schneestern ★★★★</h3>
+                <p>500 m von der Location, Spa & Sauna.</p>
+                <p><a href="#" rel="nofollow">Zimmer reservieren</a></p>
+            </article>
+            <article class="card">
+                <h3>Gasthaus Tannenduft ★★★</h3>
+                <p>Gemütlich & nah - Frühstück inklusive.</p>
+                <p><a href="#" rel="nofollow">Zimmer reservieren</a></p>
+            </article>
+            <article class="card">
+                <h3>Alpine Lodge ★★★</h3>
+                <p>Shuttle-Stop direkt vor der Tür.</p>
+                <p><a href="#" rel="nofollow">Zimmer reservieren</a></p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section id="faq" class="section section--light">
+    <div class="container">
+        <h2>FAQ</h2>
+        <div class="faq">
+            <details>
+                <summary>Kann ich jemanden mitbringen?</summary>
+                <p>Bitte tragt eure Begleitperson im RSVP-Formular ein.</p>
+            </details>
+            <details>
+                <summary>Gibt es Geschenkwünsche?</summary>
+                <p>
+                    Wir freuen uns am meisten über gemeinsame Zeit - wer dennoch etwas
+                    schenken möchte, findet Hinweise in der Einladung.
+                </p>
+            </details>
+            <details>
+                <summary>Darf fotografiert werden?</summary>
+                <p>
+                    Ja! Bitte markiert Fotos in sozialen Medien mit
+                    <strong>#winterhochzeit2025</strong>.
+                </p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<section id="rsvp" class="section">
+    <div class="container">
+        <h2>RSVP bis {{ rsvp_deadline.strftime("%d.%m.%Y") }}</h2>
+        <form action="{{ url_for('submit_rsvp') }}" method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid">
+                <label>
+                    <span>Vollständiger Name *</span>
+                    <input type="text" name="name" autocomplete="name" required />
+                </label>
+                <label>
+                    <span>E-Mail *</span>
+                    <input type="email" name="email" autocomplete="email" required />
+                </label>
+                <label>
+                    <span>Komme ich?</span>
+                    <select name="attendance" required>
+                        <option value="">Bitte wählen…</option>
+                        <option value="yes">Ja, ich bin dabei</option>
+                        <option value="no">Leider nein</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Anzahl Personen</span>
+                    <input type="number" name="guests" min="1" max="10" value="1" />
+                </label>
+                <label class="grid--span-2">
+                    <span>Besonderes (Allergien, Kinderstuhl, etc.)</span>
+                    <input type="text" name="notes" />
+                </label>
+                <label class="consent grid--span-2">
+                    <input type="checkbox" name="consent" required />
+                    <span>Ich bin einverstanden, dass meine Angaben zur Organisation des
+                        Events gespeichert werden.
+                        <a href="{{ url_for('privacy') }}">Mehr erfahren</a>.</span>
+                </label>
+            </div>
+            <div class="form-actions">
+                <button class="btn" type="submit">Absenden</button>
+            </div>
+        </form>
+        <p class="privacy-hint">
+            Hinweis: Wir verwenden die Daten ausschließlich für dieses Event und
+            löschen sie danach.
+        </p>
+    </div>
+</section>
+{% endblock %}

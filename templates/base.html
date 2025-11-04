@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ event_title }} | Event-Website</title>
+    <meta
+      name="description"
+      content="Offizielle Event-Website: Infos, Ablauf, Anfahrt, Übernachtung & RSVP."
+    />
+    <meta property="og:title" content="{{ event_title }} | Event-Website" />
+    <meta
+      property="og:description"
+      content="Alle Infos – jetzt zusagen & Details checken."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="{{ url_for('static', filename='assets/og-image.jpg') }}"
+    />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='assets/favicon.svg') }}"
+      type="image/svg+xml"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}?v=8"
+    />
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('index') }}">❄ {{ event_title }}</a>
+      <nav>
+        <ul class="nav-list">
+          <li><a href="#infos">Infos</a></li>
+          <li><a href="#ablauf">Ablauf</a></li>
+          <li><a href="#location">Location</a></li>
+          <li><a href="#uebernachtung">Übernachtung</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#rsvp" class="btn btn--small">RSVP</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>{% block content %}{% endblock %}</main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>
+          © {{ now().year if now else 2025 }} {{ event_title }} • Mit Liebe
+          gestaltet
+        </p>
+        <a href="#top" class="back-to-top">Nach oben ↑</a>
+      </div>
+    </footer>
+    <script>
+  (function () {
+  const el = document.getElementById('countdown');
+  if (!el) return;
+
+  // ISO-String aus data-Attribut; ohne Zeitzone = lokale Zeit
+  const target = new Date(el.dataset.event.replace(' ', 'T'));
+
+  function tick() {
+    const now = new Date();
+    let diff = target - now;
+    if (diff <= 0) {
+      ['cw','cd','ch'].forEach(id => { const s = el.querySelector('#'+id); if (s) s.textContent = '00'; });
+      return;
+    }
+    const totalHours = Math.floor(diff / 3_600_000);          // ms -> h
+    const weeks      = Math.floor(totalHours / (24 * 7));
+    const days       = Math.floor((totalHours % (24 * 7)) / 24);
+    const hours      = totalHours % 24;
+
+    const pad = n => String(n).padStart(2,'0');
+    el.querySelector('#cw').textContent = pad(weeks);
+    el.querySelector('#cd').textContent = pad(days);
+    el.querySelector('#ch').textContent = pad(hours);
+  }
+
+  tick();
+  setInterval(tick, 1000); // fortlaufend aktualisieren
+  })();
+  </script>
+  {% block scripts %}{% endblock %}
+  </body>
+</html>

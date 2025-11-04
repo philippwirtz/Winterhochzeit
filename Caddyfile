@@ -1,0 +1,12 @@
+# <DEINE_DOMAIN> ersetzen, z. B. hochzeit.example.com
+<DEINE_DOMAIN> {
+    encode zstd gzip
+    reverse_proxy app:8000
+
+    # optionale Security-Header zusätzlich zu Talisman
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
