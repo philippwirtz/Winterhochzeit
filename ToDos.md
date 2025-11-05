@@ -20,12 +20,12 @@
     - [ ] anschließend Party
     - [ ] Mitternachtssnack
 - [x] Übernachtung -> Schlafmöglichkeiten
-  - [ ] INVITA Naturchalet für das gesamte Wochenende reserviert (5 Wohnungen a 4 Personen) (mit Link)
-  - [ ] Nahe Empfehlungen: Gästehaus Mäder - Dreiweltenkarte (mit Link)
-  - [ ] nach Rücksprache ggf. bei Familien
-- [ ] 2. Locationkarte Krähenlochhütte
+  - [x] INVITA Naturchalet für das gesamte Wochenende reserviert (5 Wohnungen a 4 Personen) (mit Link)
+  - [x] Nahe Empfehlungen: Gästehaus Mäder - Dreiweltenkarte (mit Link)
+  - [x] nach Rücksprache ggf. bei Familien
+- [x] 2. Locationkarte Krähenlochhütte
 - [x] Anreise Tipps entfernen
-- [ ] FAQ
+- [x] FAQ
   - [x] Kontakt Trauzeugen
   - [x] Begleitung: nur eingeladen, wer auf dem Kuvert steht
   - [x] Geschenke: Das schönste Geschenk ist, dass ihr mit uns feiert. Falls ihr uns etwas schenken wollt, ist ein Kuvertbriefkasten aufgestellt.
