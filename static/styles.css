@@ -186,10 +186,13 @@ img {
   font-size: clamp(2.2rem, 5vw, 4rem);
   margin: 0 0 0.5rem 0;
 }
-
+#countdown {
+  margin-bottom: 1rem;   /* 0.5rem = ca. 8px Abstand nach unten */
+}
 .lead {
-  font-size: clamp(1rem, 2.4vw, 1.25rem);
+  font-size: clamp(2rem, 2.4vw, 1.25rem);
   color: var(--border);
+  margin-top: 7rem;
 }
 
 .countdown {
@@ -433,3 +436,34 @@ select:focus {
 .admin-nav .btn:hover { transform: translateY(-1px); }
 
 .card h3 { margin-top: 0; }
+.days-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.days-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+fieldset {
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: #fafafa;
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+
+#days-fieldset .muted {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #777;
+}

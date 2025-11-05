@@ -37,7 +37,7 @@
           <li><a href="#infos">Infos</a></li>
           <li><a href="#ablauf">Ablauf</a></li>
           <li><a href="#location">Location</a></li>
-          <li><a href="#uebernachtung">Übernachtung</a></li>
+          <li><a href="#uebernachtung">Schlafmöglichkeiten</a></li>
           <li><a href="#faq">FAQ</a></li>
           <li><a href="#rsvp" class="btn btn--small">RSVP</a></li>
         </ul>
@@ -56,24 +56,27 @@
       </div>
     </footer>
     <script>
-  (function () {
+(function () {
   const el = document.getElementById('countdown');
   if (!el) return;
 
-  // ISO-String aus data-Attribut; ohne Zeitzone = lokale Zeit
-  const target = new Date(el.dataset.event.replace(' ', 'T'));
+  const target = new Date(el.dataset.event); // isoformat() passt
+  if (isNaN(target)) return;
 
   function tick() {
     const now = new Date();
     let diff = target - now;
     if (diff <= 0) {
-      ['cw','cd','ch'].forEach(id => { const s = el.querySelector('#'+id); if (s) s.textContent = '00'; });
+      ['cw','cd','ch'].forEach(id => {
+        const s = el.querySelector('#'+id);
+        if (s) s.textContent = '00';
+      });
       return;
     }
-    const totalHours = Math.floor(diff / 3_600_000);          // ms -> h
-    const weeks      = Math.floor(totalHours / (24 * 7));
-    const days       = Math.floor((totalHours % (24 * 7)) / 24);
-    const hours      = totalHours % 24;
+    const totalHours = Math.floor(diff / 3_600_000);
+    const weeks = Math.floor(totalHours / (24 * 7));
+    const days  = Math.floor((totalHours % (24 * 7)) / 24);
+    const hours = totalHours % 24;
 
     const pad = n => String(n).padStart(2,'0');
     el.querySelector('#cw').textContent = pad(weeks);
@@ -82,9 +85,34 @@
   }
 
   tick();
-  setInterval(tick, 1000); // fortlaufend aktualisieren
-  })();
-  </script>
+  setInterval(tick, 1000);
+})();
+</script>
+
   {% block scripts %}{% endblock %}
+  <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const attendance = document.getElementById('attendance');
+  const days = document.getElementById('days-fieldset');
+  if (!attendance || !days) return; // keine RSVP-Form vorhanden → nichts tun
+
+  const radios = days.querySelectorAll('input[name="attendance_days"]');
+
+  function toggleDays() {
+    const show = attendance.value === 'yes';
+    // schöner als display:none: per hidden ein-/ausblenden
+    days.hidden = !show;
+    // Radios nur bei Zusage verpflichtend machen
+    radios.forEach(r => r.required = show);
+    // Bei Absage Auswahl zurücksetzen
+    if (!show) radios.forEach(r => (r.checked = false));
+  }
+
+  attendance.addEventListener('change', toggleDays);
+  toggleDays(); // initialer Zustand
+});
+</script>
+
+
   </body>
 </html>

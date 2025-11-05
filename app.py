@@ -19,6 +19,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_basicauth import BasicAuth
 from sqlalchemy.sql import func, or_, desc
+from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import mimetypes
@@ -129,6 +130,8 @@ class RSVP(db.Model):
     song = db.Column(db.String(300))
     consent = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    attendance_days = db.Column(db.String(10), nullable=False, default="sat") # "fri"| "sat"|"both"
+    contribution = db.Column(db.String(300)) # Salat/Kuchen etc.
 
 # ---------- Helpers ----------
 def parse_local_date(s: str) -> datetime:
@@ -188,15 +191,18 @@ def send_rsvp_mail(entry: RSVP):
     msg["To"] = ", ".join(tos)
 
     body = [
-        f"Neue RSVP für {EVENT_TITLE}",
-        "",
-        f"Name: {entry.name}",
-        f"E-Mail: {entry.email}",
-        f"Status: {'Zusage' if entry.attendance=='yes' else 'Absage'}",
-        f"Personen: {entry.guests}",
-        f"Notizen: {entry.notes or '-'}",
-        f"Zeitpunkt: {entry.created_at}",
-    ]
+    f"Neue RSVP für {EVENT_TITLE}",
+    "",
+    f"Name: {entry.name}",
+    f"E-Mail: {entry.email}",
+    f"Status: {'Zusage' if entry.attendance=='yes' else 'Absage'}",
+    f"Tage: {entry.attendance_days or '-'}",              # NEU
+    f"Spende: {entry.contribution or '-'}",               # NEU
+    f"Personen: {entry.guests}",
+    f"Notizen: {entry.notes or '-'}",
+    f"Zeitpunkt: {entry.created_at}",
+]
+
     msg.set_content("\n".join(body))
 
     with smtplib.SMTP(host, port, timeout=10) as s:
@@ -242,6 +248,8 @@ def submit_rsvp():
     notes = escape((request.form.get("notes") or "").strip())[:500]
     song = escape((request.form.get("song") or "").strip())[:300]  # falls später wieder im Formular
     consent = request.form.get("consent") == "on"
+    attendance_days = (request.form.get("attendance_days") or "").strip()
+    contribution = escape((request.form.get("contribution") or "").strip())[:300]
 
     errors = []
     if not name:
@@ -250,6 +258,15 @@ def submit_rsvp():
         errors.append("Bitte gib eine gültige E-Mail-Adresse an.")
     if attendance not in ("yes", "no"):
         errors.append("Bitte wähle, ob du kommen kannst.")
+    valid_days = ("fri", "sat", "both")
+    if attendance == "yes":
+        if attendance_days not in valid_days:
+            errors.append("Bitte wähle, für welche Tage du zusagst (Fr/Sa/Beide).")
+    else:
+    # bei Absage Tage ignorieren
+        attendance_days = ""
+        contribution = ""
+
     try:
         guests = int(guests_raw or 1)
         if guests < 1 or guests > 10:
@@ -268,8 +285,11 @@ def submit_rsvp():
 
     entry = RSVP(
         name=name, email=email, attendance=attendance,
-        guests=guests, notes=notes, song=song, consent=consent
+        guests=guests, notes=notes, song=song, consent=consent,
+        attendance_days=attendance_days,
+        contribution=contribution
     )
+
     db.session.add(entry)
     db.session.commit()
 
@@ -295,57 +315,72 @@ INVITED_TOTAL = int(os.getenv("INVITED_TOTAL", "0"))
 @limiter.limit("10/minute")
 @admin_protected
 def admin_dashboard():
-    
-    # Kennzahlen
-    total = db.session.query(RSVP).count()
-    yes_count = db.session.query(RSVP).filter(RSVP.attendance == "yes").count()
-    no_count  = db.session.query(RSVP).filter(RSVP.attendance == "no").count()
+    # Auth (BasicAuth handled in @admin_protected)
+    # --- Filter & Query-Params ---
+    attendance = (request.args.get("attendance") or "").strip()   # "", "yes", "no"
+    days       = (request.args.get("days") or "").strip()         # "", "fri","sat","both"
+    q          = (request.args.get("q") or "").strip()
+    order      = (request.args.get("order") or "created_desc").strip()
+    page       = max(int(request.args.get("page", 1)), 1)
+    per_page   = max(min(int(request.args.get("per_page", 25)), 200), 5)
+
+    # --- Kennzahlen ---
+    total      = db.session.query(RSVP).count()
+    yes_count  = db.session.query(RSVP).filter(RSVP.attendance == "yes").count()
+    no_count   = db.session.query(RSVP).filter(RSVP.attendance == "no").count()
     guests_yes = db.session.query(db.func.coalesce(db.func.sum(RSVP.guests), 0))\
                     .filter(RSVP.attendance == "yes").scalar() or 0
 
-    # Response-Rate optional (nur wenn INVITED_TOTAL gesetzt)
-    response_rate = None
-    if INVITED_TOTAL > 0:
-        response_rate = round((total / INVITED_TOTAL) * 100, 1)
+    fri_count  = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.attendance_days=="fri").count()
+    sat_count  = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.attendance_days=="sat").count()
+    both_count = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.attendance_days=="both").count()
 
-    # letzte Einträge (10)
-    recent = RSVP.query.order_by(RSVP.created_at.desc()).limit(10).all()
+    # --- Hauptliste mit Filtern ---
+    query = RSVP.query
 
-    # Tages-Counts (letzte 14 Tage) für kleines SVG-Bar-Chart (ohne JS)
-    from datetime import timedelta
-    today = datetime.now().date()
-    start_date = today - timedelta(days=13)
-    # hole alle in der Spanne
-    rows = db.session.query(
-                db.func.date(RSVP.created_at).label("d"),
-                db.func.count(RSVP.id)
-           ).filter(RSVP.created_at >= start_date)\
-            .group_by(db.func.date(RSVP.created_at))\
-            .order_by(db.func.date(RSVP.created_at)).all()
-    # in dict mappen
-    by_day = { (r.d if hasattr(r, "d") else r[0]): int(r[1] if hasattr(r, "d") else r[1]) for r in rows }
+    if attendance in ("yes", "no"):
+        query = query.filter(RSVP.attendance == attendance)
 
-    series = []
-    for i in range(14):
-        d = start_date + timedelta(days=i)
-        series.append({"date": d.strftime("%d.%m"), "count": by_day.get(d, 0)})
+    if days in ("fri", "sat", "both"):
+        query = query.filter(RSVP.attendance_days == days)
 
-    max_val = max((p["count"] for p in series), default=1) or 1
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(RSVP.name.ilike(like),
+                RSVP.email.ilike(like),
+                RSVP.notes.ilike(like),
+                RSVP.contribution.ilike(like))
+        )
+
+    # Sortierung
+    if order == "created_asc":
+        query = query.order_by(RSVP.created_at.asc())
+    elif order == "name_asc":
+        query = query.order_by(RSVP.name.asc())
+    elif order == "name_desc":
+        query = query.order_by(RSVP.name.desc())
+    else:  # "created_desc" default
+        query = query.order_by(RSVP.created_at.desc())
+
+    total_filtered = query.count()
+    rsvps = query.offset((page - 1) * per_page).limit(per_page).all()
+    pages = (total_filtered + per_page - 1) // per_page
 
     return render_template(
         "admin_dashboard.html",
         event_title=EVENT_TITLE,
+        # Kennzahlen
         total=total,
         yes_count=yes_count,
         no_count=no_count,
         guests_yes=guests_yes,
-        response_rate=response_rate,
-        invited_total=INVITED_TOTAL if INVITED_TOTAL > 0 else None,
-        recent=recent,
-        series=series,
-        max_val=max_val
+        fri_count=fri_count, sat_count=sat_count, both_count=both_count,
+        # Liste
+        rsvps=rsvps, total_filtered=total_filtered,
+        attendance=attendance, days=days, q=q, order=order,
+        page=page, pages=pages, per_page=per_page
     )
-
 
 # --- Admin: Liste (optional; falls du sie noch nicht hast) ---
 @app.route("/admin/rsvps")
@@ -401,10 +436,18 @@ def admin_rsvps_update():
         guests = r.guests
 
     notes = escape((request.form.get("notes") or r.notes or "").strip())[:500]
+    # NEU: Tage & Spende übernehmen
+    attendance_days = (request.form.get("attendance_days") or r.attendance_days or "").strip()
+    if attendance_days not in ("fri", "sat", "both", ""):
+        attendance_days = r.attendance_days
+
+    contribution = escape((request.form.get("contribution") or r.contribution or "").strip())[:300]
 
     r.attendance = attendance
+    r.attendance_days = attendance_days
     r.guests = guests
     r.notes = notes
+    r.contribution = contribution
     db.session.commit()
     return redirect(url_for("admin_rsvps"))
 
@@ -436,16 +479,19 @@ def export_csv():
     import io
     buf = io.StringIO(newline="")
     writer = csv.writer(buf, delimiter=";")
-    writer.writerow(["Datum", "Name", "E-Mail", "Status", "Personen", "Notizen"])
+    writer.writerow(["Datum", "Name", "E-Mail", "Status", "Tage", "Personen", "Spende", "Notizen"])
     for r in rows:
         writer.writerow([
-            r.created_at.strftime("%d.%m.%Y %H:%M"),
-            safe_csv_cell(r.name),
-            safe_csv_cell(r.email),
-            "Zusage" if r.attendance == "yes" else "Absage",
-            r.guests or 1,
-            safe_csv_cell(r.notes or ""),
-        ])
+        r.created_at.strftime("%d.%m.%Y %H:%M"),
+        safe_csv_cell(r.name),
+        safe_csv_cell(r.email),
+        "Zusage" if r.attendance == "yes" else "Absage",
+        r.attendance_days or "",
+        r.guests or 1,
+        safe_csv_cell(r.contribution or ""),
+        safe_csv_cell(r.notes or ""),
+    ])
+
 
     resp = make_response(buf.getvalue())
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
@@ -500,6 +546,23 @@ def not_found(e):
 def init_db():
     db.create_all()
     print("Datenbank initialisiert.")
+
+@app.cli.command("alter-db-add-days-contrib")
+def alter_db_add_days_contrib():
+    """Einmalige, einfache Migration für bestehende SQLite-DB."""
+    with app.app_context():
+        # prüfen & hinzufügen (SQLite: ALTER TABLE ADD COLUMN ist idempotent genug, wenn wir try/except nutzen)
+        try:
+            db.session.execute(text("ALTER TABLE rsvp ADD COLUMN attendance_days VARCHAR(10) NOT NULL DEFAULT 'sat'"))
+        except Exception as e:
+            app.logger.info(f"attendance_days evtl. schon vorhanden: {e}")
+        try:
+            db.session.execute(text("ALTER TABLE rsvp ADD COLUMN contribution VARCHAR(300)"))
+        except Exception as e:
+            app.logger.info(f"contribution evtl. schon vorhanden: {e}")
+        db.session.commit()
+        print("Migration abgeschlossen.")
+
 
 @app.context_processor
 def inject_now():

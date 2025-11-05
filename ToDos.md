@@ -1,0 +1,36 @@
+# "To Do
+
+- [x] Wir freuen uns" unter den Counter verschieben
+- [x] Bild verschieben
+- [ ] Dresscode Inhalt überarbeiten
+- [ ] Standesamt Infos statt Live-Musik & DJ
+- [ ] Mitbringsel statt Buffet
+- [ ] RSVP für Freitag & Samstag gestalten
+- [ ] RSVP Beitrag Salatbuffet (Freitag) / Kuchen (Samstag) einbauen
+- [ ] Fotograf Inhalt überarbeiten
+- [ ] Event-Ablauf statt Tagesablauf
+- [ ] Event-Ablauf Liste mittig und beim scrollen einzelne Punkte sichtbar
+  - [ ] Freitag 04.12: ab 17 Uhr gemütliches Beisammensein Krähenlochhütte mit Salatbuffet
+  - [ ] Samstag 05.12: (mit Tagesablauf & Uhrzeiten)
+    - [ ] 10.30 Uhr Standesamt
+    - [ ] ab 11 Uhr Sektempfang/Glühwein & Häppchen
+    - [ ] Fotos
+    - [ ] 15 Uhr Kaffee/Kuchen
+    - [ ] 18.30 Uhr Abendessen
+    - [ ] anschließend Party
+    - [ ] Mitternachtssnack
+- [x] Übernachtung -> Schlafmöglichkeiten
+  - [ ] INVITA Naturchalet für das gesamte Wochenende reserviert (5 Wohnungen a 4 Personen) (mit Link)
+  - [ ] Nahe Empfehlungen: Gästehaus Mäder - Dreiweltenkarte (mit Link)
+  - [ ] nach Rücksprache ggf. bei Familien
+- [ ] 2. Locationkarte Krähenlochhütte
+- [ ] Anreise Tipps entfernen
+- [ ] FAQ
+  - [ ] Kontakt Trauzeugen
+  - [ ] Begleitung: nur eingeladen, wer auf dem Kuvert steht
+  - [ ] Geschenke: Das schönste Geschenk ist, dass ihr mit uns feiert. Falls ihr uns etwas schenken wollt, ist ein Kuvertbriefkasten aufgestellt.
+  - [ ] Spiele/Reden mit Trauzeugen absprechen
+  - [ ] Gibt es ein Frühstück am Sonntag? JA!
+- [ ] E-Mail Benachrichtigung für uns einschalten
+- [ ] Veranstaltung Passwortschutz
+- [ ] QR-Code & Mobile compatible

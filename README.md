@@ -1,7 +1,5 @@
 # Winterhochzeit – Python-only Event-Seite (Flask)
 
-**Keine JavaScript-Abhängigkeit nötig.** Countdown, Formularvalidierung und Speicherung passieren serverseitig.
-
 ## Schnellstart
 
 ```bash

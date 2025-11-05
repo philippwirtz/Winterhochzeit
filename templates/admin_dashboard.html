@@ -1,108 +1,160 @@
 {% extends "base.html" %}
-
 {% block content %}
 <section class="section">
   <div class="container">
     <h1>Admin-Dashboard</h1>
 
-    <nav class="admin-nav" style="margin:.5rem 0 1rem; display:flex; gap:.5rem; flex-wrap:wrap">
-      <a class="btn btn--small" href="{{ url_for('admin_dashboard') }}">Übersicht</a>
-      <a class="btn btn--small btn--ghost" href="{{ url_for('admin_rsvps') }}">RSVP-Liste</a>
-      <a class="btn btn--small btn--ghost" href="{{ url_for('export_csv') }}">CSV-Export</a>
-      <a class="btn btn--small btn--ghost" href="{{ url_for('event_ics') }}">Event .ics</a>
-    </nav>
-
-    <!-- KPIs -->
-    <div class="cards" style="margin-bottom:1rem">
-      <article class="card">
-        <h3>Gesamt RSVPs</h3>
-        <p style="font-size:2rem; font-weight:800; margin:.25rem 0">{{ total }}</p>
-        {% if invited_total %}
-          <small>{{ response_rate }}% Rücklauf von {{ invited_total }}</small>
-        {% endif %}
+    <!-- Kennzahlen -->
+    <div class="features" style="margin-bottom:1rem">
+      <article class="feature">
+        <h3>Gesamt</h3>
+        <p><strong>{{ total }}</strong> Antworten</p>
       </article>
-      <article class="card">
+      <article class="feature">
         <h3>Zusagen</h3>
-        <p style="font-size:2rem; font-weight:800; margin:.25rem 0">{{ yes_count }}</p>
-        <small>Personen (Summe): {{ guests_yes }}</small>
+        <p><strong>{{ yes_count }}</strong> Personen · <span class="muted">{{ guests_yes }} Gäste gesamt</span></p>
       </article>
-      <article class="card">
+      <article class="feature">
         <h3>Absagen</h3>
-        <p style="font-size:2rem; font-weight:800; margin:.25rem 0">{{ no_count }}</p>
+        <p><strong>{{ no_count }}</strong></p>
+      </article>
+      <article class="feature">
+        <h3>Verteilung (Zusage)</h3>
+        <p>Fr: {{ fri_count }} · Sa: {{ sat_count }} · Beide: {{ both_count }}</p>
       </article>
     </div>
 
-    <!-- Inline SVG Chart: Einsendungen / Tag (14 Tage) -->
-    <div class="card" style="margin-bottom:1rem">
-      <h3 style="margin-top:0">Eingänge (letzte 14 Tage)</h3>
-      <div style="width:100%; overflow:auto">
-        <svg viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet" style="width:100%; max-width:700px; height:auto">
-          {% set n = series|length %}
-          {% set gap = 4 %}
-          {% set barw = (300 - (n-1)*gap) / n %}
-          {% for p in series %}
-            {% set x = loop.index0 * (barw + gap) %}
-            {% set h =  (p.count / (max_val or 1)) * 90 %}
-            {% set y = 100 - h %}
-            <rect x="{{ x|round(2) }}" y="{{ y|round(2) }}" width="{{ barw|round(2) }}" height="{{ h|round(2) }}" rx="3" ry="3" fill="currentColor" opacity="{{ 0.35 + (0.65 * (p.count/(max_val or 1))) }}"></rect>
-            {% if loop.last %}
-              <text x="{{ x + barw }}" y="114" font-size="8" text-anchor="end" fill="currentColor" opacity=".7">{{ p.date }}</text>
-            {% elif loop.first %}
-              <text x="{{ x }}" y="114" font-size="8" text-anchor="start" fill="currentColor" opacity=".7">{{ p.date }}</text>
-            {% endif %}
-          {% endfor %}
-          <line x1="0" y1="100" x2="300" y2="100" stroke="currentColor" stroke-width="0.5" opacity=".3"></line>
-        </svg>
-      </div>
-      <small class="muted">Max/Tag: {{ max_val }}</small>
-    </div>
+    <!-- Filter / Suche / Sortierung -->
+    <form method="get" action="{{ url_for('admin_dashboard') }}" class="card" style="padding: .75rem; margin-bottom:1rem; display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:.5rem">
+      <label>
+        <span>Status</span>
+        <select name="attendance">
+          <option value="" {{ 'selected' if not attendance }}>Alle</option>
+          <option value="yes" {{ 'selected' if attendance=='yes' }}>Zusage</option>
+          <option value="no"  {{ 'selected' if attendance=='no'  }}>Absage</option>
+        </select>
+      </label>
 
-    <!-- Letzte Aktivitäten -->
+      <label>
+        <span>Tage</span>
+        <select name="days">
+          <option value="" {{ 'selected' if not days }}>Alle</option>
+          <option value="fri"  {{ 'selected' if days=='fri'  }}>Freitag</option>
+          <option value="sat"  {{ 'selected' if days=='sat'  }}>Samstag</option>
+          <option value="both" {{ 'selected' if days=='both' }}>Beide</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Sortierung</span>
+        <select name="order">
+          <option value="created_desc" {{ 'selected' if order=='created_desc' }}>Neueste zuerst</option>
+          <option value="created_asc"  {{ 'selected' if order=='created_asc'  }}>Älteste zuerst</option>
+          <option value="name_asc"     {{ 'selected' if order=='name_asc'     }}>Name A→Z</option>
+          <option value="name_desc"    {{ 'selected' if order=='name_desc'    }}>Name Z→A</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Treffer / Seite</span>
+        <select name="per_page">
+          {% for n in [25,50,100,200] %}
+            <option value="{{ n }}" {{ 'selected' if per_page==n }}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="grid--span-2">
+        <span>Suche (Name, E-Mail, Notizen, Spende)</span>
+        <input type="text" name="q" value="{{ q or '' }}" placeholder="z. B. Nachname, Allergie, Gericht …">
+      </label>
+
+      <div style="display:flex; align-items:end; gap:.5rem">
+        <button class="btn" type="submit">Anwenden</button>
+        <a class="btn btn--ghost" href="{{ url_for('admin_dashboard') }}">Zurücksetzen</a>
+        <a class="btn btn--ghost" href="{{ url_for('export_csv') }}">CSV-Export</a>
+      </div>
+    </form>
+
+    <!-- Liste + Inline-Edit -->
     <div class="card" style="overflow:auto">
-      <h3 style="margin-top:0">Letzte 10 Rückmeldungen</h3>
       <table style="width:100%; border-collapse:collapse">
         <thead>
           <tr>
-            <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Zeit</th>
+            <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Datum</th>
             <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Name</th>
             <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">E-Mail</th>
             <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Status</th>
+            <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Tage</th>
+            <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Spende</th>
             <th style="text-align:right; padding:.5rem; border-bottom:1px solid var(--border)">Personen</th>
             <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Notizen</th>
             <th style="padding:.5rem; border-bottom:1px solid var(--border)">Aktionen</th>
           </tr>
         </thead>
         <tbody>
-          {% for r in recent %}
+          {% for r in rsvps %}
           <tr>
             <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
             <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.name }}</td>
             <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.email }}</td>
-            <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ 'Zusage' if r.attendance=='yes' else 'Absage' }}</td>
-            <td style="padding:.5rem; border-bottom:1px solid var(--border); text-align:right">{{ r.guests or 1 }}</td>
-            <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.notes or '' }}</td>
+
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <form action="{{ url_for('admin_rsvps_update') }}" method="post" style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <select name="attendance">
+                  <option value="yes" {{ 'selected' if r.attendance=='yes' else '' }}>Zusage</option>
+                  <option value="no"  {{ 'selected' if r.attendance=='no'  else '' }}>Absage</option>
+                </select>
+            </td>
+
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <select name="attendance_days">
+                <option value=""    {{ 'selected' if not r.attendance_days }}>–</option>
+                <option value="fri"  {{ 'selected' if r.attendance_days=='fri'  }}>Freitag</option>
+                <option value="sat"  {{ 'selected' if r.attendance_days=='sat'  }}>Samstag</option>
+                <option value="both" {{ 'selected' if r.attendance_days=='both' }}>Beide</option>
+              </select>
+            </td>
+
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <input type="text" name="contribution" value="{{ r.contribution or '' }}" placeholder="optional" style="width:100%">
+            </td>
+
+            <td style="padding:.5rem; border-bottom:1px solid var(--border); text-align:right">
+              <input type="number" name="guests" min="1" max="10" value="{{ r.guests or 1 }}" style="width:64px; text-align:right">
+            </td>
+
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <input type="text" name="notes" value="{{ r.notes or '' }}" style="width:100%">
+            </td>
+
             <td style="padding:.5rem; border-bottom:1px solid var(--border); white-space:nowrap">
-              <form action="{{ url_for('admin_rsvps_update') }}" method="post" style="display:inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="id" value="{{ r.id }}">
-                <input type="hidden" name="attendance" value="{{ 'no' if r.attendance=='yes' else 'yes' }}">
-                <button class="btn btn--small btn--ghost" type="submit"
-                        title="Status toggeln">{{ 'Als Absage markieren' if r.attendance=='yes' else 'Als Zusage markieren' }}</button>
+              <button class="btn btn--small" type="submit">Speichern</button>
               </form>
-              <form action="{{ url_for('admin_rsvps_delete') }}" method="post" style="display:inline" onsubmit="return confirm('Wirklich löschen?')">
+              <form action="{{ url_for('admin_rsvps_delete') }}" method="post" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" value="{{ r.id }}">
-                <button class="btn btn--small btn--ghost" type="submit">Löschen</button>
+                <button class="btn btn--small btn--ghost" type="submit" onclick="return confirm('Wirklich löschen?')">Löschen</button>
               </form>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="7" style="padding:.75rem">Noch keine Rückmeldungen.</td></tr>
+          <tr><td colspan="9" style="padding:.75rem">Keine Einträge gefunden.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
+    {% if pages > 1 %}
+    <nav style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap">
+      {% for p in range(1, pages+1) %}
+        <a class="btn btn--small {{ 'btn--ghost' if p != page }}"
+           href="{{ url_for('admin_dashboard', page=p, attendance=attendance, days=days, q=q, order=order, per_page=per_page) }}">{{ p }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

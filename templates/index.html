@@ -1,6 +1,6 @@
 {% extends "base.html" %} {% block head %}
 <!-- Optional, aktualisiert die Seite alle 30 Sekunden für den Countdown (ohne JS) -->
-{% endblock %} 
+{% endblock %}
 {% block content %}
 <a id="top"></a>
 <section class="hero" id="hero" aria-label="Einladung und Countdown">
@@ -11,27 +11,26 @@
             <span class="nowrap">{{ event_title }}</span>
             <span class="accent">{{ event_dt.year }}</span>
         </h1>
+
+        <div class="countdown" id="countdown" data-event="{{ event_dt.isoformat() }}">
+            <div><span id="cw">--</span><small>Wochen</small></div>
+            <div><span id="cd">--</span><small>Tage</small></div>
+            <div><span id="ch">--</span><small>Stunden</small></div>
+        </div>
+        <noscript>Countdown: {{ (event_dt - now()).days // 7 }} Wochen,
+            {{ ((event_dt - now()).days % 7) }} Tage</noscript>
+
         <p class="lead">
             Wir freuen uns, mit euch zu feiern!<br /><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong>
         </p>
-        <div class="countdown" id="countdown" data-event="{{ event_dt.isoformat() }}">
-  <div><span id="cw">--</span><small>Wochen</small></div>
-  <div><span id="cd">--</span><small>Tage</small></div>
-  <div><span id="ch">--</span><small>Stunden</small></div>
-</div>
-<noscript>Countdown: {{ (event_dt - now()).days // 7 }} Wochen,
-{{ ((event_dt - now()).days % 7) }} Tage</noscript>
-
-        
     </div>
-        <p class="muted">
-            Hinweis: Der Countdown wird serverseitig berechnet und alle 30s
-            aktualisiert.
-        </p>
-        <div class="hero__cta">
-            <a class="btn" href="#rsvp">Jetzt zusagen</a>
-            <a class="btn btn--ghost" href="#infos">Mehr Infos</a>
-        </div>
+    <p class="muted">
+        Hinweis: Der Countdown wird serverseitig berechnet und alle 30s
+        aktualisiert.
+    </p>
+    <div class="hero__cta">
+        <a class="btn" href="#rsvp">Jetzt zusagen</a>
+        <a class="btn btn--ghost" href="#infos">Mehr Infos</a>
     </div>
 </section>
 
@@ -42,26 +41,26 @@
             <article class="feature">
                 <h3>Dresscode</h3>
                 <p>
-                    Festlich-warm: Denken Sie an <strong>Winter</strong>! Elegante
-                    Outfits, Mantel, Schal & bequeme Schuhe.
+                    Festlich-warm: Elegante Outfits, Mantel, Schal & bequeme Schuhe.
                 </p>
             </article>
             <article class="feature">
-                <h3>Live-Musik & DJ</h3>
-                <p>Ab 18:30 Uhr Band, danach DJ - Musikwünsche gern im RSVP angeben.</p>
+                <h3>Standesamt</h3>
+                <p>Leider ist im Standesamt nur begrenzter Platz, daher bitten wir nur die persönlich angesprochenen
+                    Gäste, mitzukommen.
+                    Nach der Trauung wird es aber natürlich ein Get-Together geben!
+                </p>
             </article>
             <article class="feature">
-                <h3>Buffet</h3>
+                <h3>Mitbringsel und Geschenke</h3>
                 <p>
-                    Vielfältiges Buffet (auch vegetarisch/vegan). Allergien bitte im RSVP
-                    mitteilen.
+                    Der Text hier muss noch bearbeitet werden.
                 </p>
             </article>
             <article class="feature">
                 <h3>Fotograf</h3>
                 <p>
-                    Es gibt eine Galerie. Wer nicht fotografiert werden möchte: Bitte vor
-                    Ort Bescheid geben.
+                    Der Text hier muss noch bearbeitet werden.
                 </p>
             </article>
         </div>
@@ -70,7 +69,7 @@
 
 <section id="ablauf" class="section">
     <div class="container">
-        <h2>Tagesablauf</h2>
+        <h2>Event-Ablauf</h2>
         <ol class="timeline">
             <li>
                 <time datetime="{{ event_dt.strftime('%Y-%m-%dT15:00') }}">15:00</time>
@@ -137,7 +136,7 @@
 
 <section id="uebernachtung" class="section">
     <div class="container">
-        <h2>Übernachtung</h2>
+        <h2>Schlaftmöglichkeiten</h2>
         <p>
             Wir haben in folgenden Hotels Zimmerkontingente hinterlegt (Stichwort „{{
             event_title }}“):
@@ -192,7 +191,7 @@
     <div class="container">
         <h2>RSVP bis {{ rsvp_deadline.strftime("%d.%m.%Y") }}</h2>
         <form action="{{ url_for('submit_rsvp') }}" method="post" novalidate>
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="grid">
                 <label>
                     <span>Vollständiger Name *</span>
@@ -202,18 +201,34 @@
                     <span>E-Mail *</span>
                     <input type="email" name="email" autocomplete="email" required />
                 </label>
+                <!-- Komme ich -->
                 <label>
                     <span>Komme ich?</span>
-                    <select name="attendance" required>
+                    <select name="attendance" id="attendance" required>
                         <option value="">Bitte wählen…</option>
                         <option value="yes">Ja, ich bin dabei</option>
                         <option value="no">Leider nein</option>
                     </select>
                 </label>
-                <label>
-                    <span>Anzahl Personen</span>
-                    <input type="number" name="guests" min="1" max="10" value="1" />
+
+                <!-- Für welche Tage -->
+                <fieldset class="grid--span-2" id="days-fieldset">
+                    <legend>Für welche Tage sagst du zu?</legend>
+                    <div class="days-options">
+                        <label><input type="radio" name="attendance_days" value="fri"> Freitag</label>
+                        <label><input type="radio" name="attendance_days" value="sat"> Samstag</label>
+                        <label><input type="radio" name="attendance_days" value="both"> Beide Tage</label>
+                    </div>
+                    <p class="muted">Hinweis: Freitag = Salatbuffet · Samstag = Kuchenbuffet.</p>
+                </fieldset>
+
+                <!-- Salat-/Kuchenspende -->
+                <label class="grid--span-2">
+                    <span>Salat-/Kuchenspende (optional)</span>
+                    <input type="text" name="contribution"
+                        placeholder="z. B. Caesar-Salat (Fr) / Zitronenkuchen (Sa)" />
                 </label>
+
                 <label class="grid--span-2">
                     <span>Besonderes (Allergien, Kinderstuhl, etc.)</span>
                     <input type="text" name="notes" />
