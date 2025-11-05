@@ -2,11 +2,11 @@
 
 - [x] Wir freuen uns" unter den Counter verschieben
 - [x] Bild verschieben
-- [ ] Dresscode Inhalt überarbeiten
-- [ ] Standesamt Infos statt Live-Musik & DJ
-- [ ] Mitbringsel statt Buffet
-- [ ] RSVP für Freitag & Samstag gestalten
-- [ ] RSVP Beitrag Salatbuffet (Freitag) / Kuchen (Samstag) einbauen
+- [x] Dresscode Inhalt überarbeiten
+- [x] Standesamt Infos statt Live-Musik & DJ
+- [x] Mitbringsel statt Buffet
+- [x] RSVP für Freitag & Samstag gestalten
+- [x] RSVP Beitrag Salatbuffet (Freitag) / Kuchen (Samstag) einbauen
 - [ ] Fotograf Inhalt überarbeiten
 - [ ] Event-Ablauf statt Tagesablauf
 - [ ] Event-Ablauf Liste mittig und beim scrollen einzelne Punkte sichtbar
@@ -24,13 +24,13 @@
   - [ ] Nahe Empfehlungen: Gästehaus Mäder - Dreiweltenkarte (mit Link)
   - [ ] nach Rücksprache ggf. bei Familien
 - [ ] 2. Locationkarte Krähenlochhütte
-- [ ] Anreise Tipps entfernen
+- [x] Anreise Tipps entfernen
 - [ ] FAQ
-  - [ ] Kontakt Trauzeugen
-  - [ ] Begleitung: nur eingeladen, wer auf dem Kuvert steht
-  - [ ] Geschenke: Das schönste Geschenk ist, dass ihr mit uns feiert. Falls ihr uns etwas schenken wollt, ist ein Kuvertbriefkasten aufgestellt.
-  - [ ] Spiele/Reden mit Trauzeugen absprechen
-  - [ ] Gibt es ein Frühstück am Sonntag? JA!
+  - [x] Kontakt Trauzeugen
+  - [x] Begleitung: nur eingeladen, wer auf dem Kuvert steht
+  - [x] Geschenke: Das schönste Geschenk ist, dass ihr mit uns feiert. Falls ihr uns etwas schenken wollt, ist ein Kuvertbriefkasten aufgestellt.
+  - [x] Spiele/Reden mit Trauzeugen absprechen
+  - [x] Gibt es ein Frühstück am Sonntag? JA!
 - [ ] E-Mail Benachrichtigung für uns einschalten
 - [ ] Veranstaltung Passwortschutz
 - [ ] QR-Code & Mobile compatible

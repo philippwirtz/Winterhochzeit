@@ -107,32 +107,51 @@
 </section>
 
 <section id="location" class="section section--light">
-    <div class="container">
-        <h2>Location & Anfahrt</h2>
-        <p>
-            <strong>{{ event_location_name }}</strong><br />{{ event_location_address
-            }}
-        </p>
-        <div class="map-wrap" role="region" aria-label="Karte der Location">
-            <iframe title="Karte"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=8.535510599613191%2C48.01650023164518%2C8.538021147251131%2C48.01766284331602&amp;layer=mapnik&amp;marker=48.0170815407576%2C8.53676587343216"
-                loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border: 0" aria-hidden="false">
-            </iframe>
+  <div class="container">
+    <h2>Location &amp; Anfahrt</h2>
+    <p>
+      <strong>{{ event_location_name }}</strong><br />
+      {{ event_location_address }}
+    </p>
+
+    <div class="cards">
+      <!-- Karte 1: bestehende Location -->
+      <article class="card">
+        <h3>Kurgarten</h3>
+        <div class="map-wrap" role="region" aria-label="Karte der Hauptlocation">
+          <iframe
+            title="Karte Hauptlocation"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=8.535510599613191%2C48.01650023164518%2C8.538021147251131%2C48.01766284331602&amp;layer=mapnik&amp;marker=48.0170815407576%2C8.53676587343216"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            style="border:0"
+          ></iframe>
         </div>
-        <details class="travel-hints">
-            <summary>Anreise-Tipps</summary>
-            <ul>
-                <li>ÖPNV: Haltestelle „Winterruh Schloss“ (5 Min. Fußweg).</li>
-                <li>
-                    PKW: Parkplätze ausgeschildert - bitte Fahrgemeinschaften bilden.
-                </li>
-                <li>
-                    Shuttle: Hotel-Transfer zwischen 00:00-02:30 Uhr (alle 30 Min.).
-                </li>
-            </ul>
-        </details>
+        <p>
+          <a href="https://www.openstreetmap.org/?mlat=48.0170815407576&amp;mlon=8.53676587343216#map=19/48.0170815407576/8.53676587343216" target="_blank" rel="noopener">Größere Karte anzeigen</a>
+        </p>
+      </article>
+
+      <!-- Karte 2: zusätzliche Adresse -->
+      <article class="card">
+        <h3>Krähenlochhütte</h3>
+        <div class="map-wrap" role="region" aria-label="Karte zweite Adresse">
+          <iframe
+            title="Karte zweite Adresse"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=8.611612915992739%2C47.901016549440335%2C8.614123463630678%2C47.90218176280629&amp;layer=mapnik&amp;marker=47.9015991594017%2C8.612868189811707"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            style="border:0"
+          ></iframe>
+        </div>
+        <p>
+          <a href="https://www.openstreetmap.org/?mlat=47.901599&amp;mlon=8.612868#map=19/47.901599/8.612868" target="_blank" rel="noopener">Größere Karte anzeigen</a>
+        </p>
+      </article>
     </div>
+  </div>
 </section>
+
 
 <section id="uebernachtung" class="section">
     <div class="container">
@@ -167,7 +186,9 @@
         <div class="faq">
             <details>
                 <summary>Kann ich jemanden mitbringen?</summary>
-                <p>Bitte tragt eure Begleitperson im RSVP-Formular ein.</p>
+                <p>So gerne wir auch mit all euren Liebsten feiern würden, möchten wir um Verständnis bitten, dass wir nicht alle Leute einladen können. 
+                    Eingeladen sind alle Personen, die auf dem Kuvert genannt sind.
+                </p>
             </details>
             <details>
                 <summary>Gibt es Geschenkwünsche?</summary>
@@ -179,9 +200,20 @@
             <details>
                 <summary>Darf fotografiert werden?</summary>
                 <p>
-                    Ja! Bitte markiert Fotos in sozialen Medien mit
-                    <strong>#winterhochzeit2025</strong>.
+                    Ja! Müssenwirnochbearbeiten.
                 </p>
+            </details>
+            <details>
+                <summary> Kontakt Trauzeugen</summary>
+                <p> KontaktKontaktKontakt</p>
+            </details>
+            <details>
+                <summary>Dürfen wir Spiele vorbereiten oder eine Rede halten?</summary>
+                <p>Gerne dürft ihr Beiträge zur Belustigung bei der Hochzeit mit den Trauzeugen absprechen.</p>
+            </details>
+            <details>
+                <summary>Geht noch was am Sonntag?</summary>
+                <p>Ja! Am Sonntag wollen wir gerne mit allen, die Zeit und Lust haben, in Ulis süßer Scheune frühstücken gehen.</p>
             </details>
         </div>
     </div>

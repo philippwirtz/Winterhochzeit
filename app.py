@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 import csv
 from io import StringIO, BytesIO
@@ -56,7 +56,9 @@ app.logger.info(f"instance_path = {app.instance_path}")
 app.logger.info(f"DB path      = {db_abs_path}")
 app.logger.info(f"SQLA URI     = {app.config['SQLALCHEMY_DATABASE_URI']}")
 
-
+secret = os.getenv("SECRET_KEY")
+if not secret:
+    raise RuntimeError("SECRET_KEY fehlt (setze ihn in .env / Environment)")
 # app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///rsvp.db")
 # app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -64,7 +66,7 @@ app.logger.info(f"SQLA URI     = {app.config['SQLALCHEMY_DATABASE_URI']}")
 app.config.update(
     DEBUG=IS_DEV is True,
     ENV="development" if IS_DEV else "production",
-    SECRET_KEY=os.getenv("SECRET_KEY"),
+    SECRET_KEY=secret,
 
     # nur in Produktion strikt
     SESSION_COOKIE_SECURE=not IS_DEV,
@@ -292,6 +294,7 @@ def submit_rsvp():
 
     db.session.add(entry)
     db.session.commit()
+    db.session.refresh(entry)
 
     try:
         send_rsvp_mail(entry)
@@ -502,7 +505,7 @@ def export_csv():
 def event_ics():
     # Start/Ende grob – passe es bei Bedarf an
     start = EVENT_DT           # naive lokale Zeit
-    end = EVENT_DT.replace(hour=EVENT_DT.hour + 4 if EVENT_DT.hour <= 20 else EVENT_DT.hour)  # +4h als Beispiel
+    end = EVENT_DT + timedelta(hours=8)
 
     def ics_dt(dt: datetime) -> str:
         # ical ohne TZ: lokale Zeit im Format YYYYMMDDTHHMMSS
