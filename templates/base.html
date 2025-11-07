@@ -30,31 +30,35 @@
     {% block head %}{% endblock %}
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="{{ url_for('index') }}">❄ {{ event_title }}</a>
-      <nav>
-        <ul class="nav-list">
-          <li><a href="#infos">Infos</a></li>
-          <li><a href="#ablauf">Ablauf</a></li>
-          <li><a href="#location">Location</a></li>
-          <li><a href="#uebernachtung">Schlafmöglichkeiten</a></li>
-          <li><a href="#faq">FAQ</a></li>
-          <li><a href="#rsvp" class="btn btn--small">RSVP</a></li>
-        </ul>
-      </nav>
-    </header>
+    <!-- Header -->
+{% if not is_gate %}
+<header class="site-header">
+  <a class="brand" href="{{ url_for('index') }}">❄ {{ event_title }}</a>
+  <nav>
+    <ul class="nav-list">
+      <li><a href="#infos">Infos</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#location">Location</a></li>
+      <li><a href="#uebernachtung">Schlafmöglichkeiten</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#rsvp" class="btn btn--small">RSVP</a></li>
+    </ul>
+  </nav>
+</header>
+{% endif %}
 
-    <main>{% block content %}{% endblock %}</main>
+<main>{% block content %}{% endblock %}</main>
 
-    <footer class="site-footer">
-      <div class="container">
-        <p>
-          © {{ now().year if now else 2025 }} {{ event_title }} • Mit Liebe
-          gestaltet
-        </p>
-        <a href="#top" class="back-to-top">Nach oben ↑</a>
-      </div>
-    </footer>
+<!-- Footer -->
+{% if not is_gate %}
+<footer class="site-footer">
+  <div class="container">
+    <p>© {{ now().year if now else 2025 }} {{ event_title }} • Mit Liebe gestaltet</p>
+    <a href="#top" class="back-to-top">Nach oben ↑</a>
+  </div>
+</footer>
+{% endif %}
+
     <script>
 (function () {
   const el = document.getElementById('countdown');
@@ -85,11 +89,30 @@
   }
 
   tick();
-  setInterval(tick, 1000);
+  setInterval(tick, 10000);
 })();
 </script>
 
-  {% block scripts %}{% endblock %}
+  {% block scripts %}<script>
+  // Sanfte Einblendung mit IntersectionObserver
+  (function () {
+    const items = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window) || items.length === 0) {
+      items.forEach(el => el.classList.add('is-visible')); // Fallback
+      return;
+    }
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.18 });
+    items.forEach(el => io.observe(el));
+  })();
+</script>
+{% endblock %}
   <script>
 document.addEventListener('DOMContentLoaded', () => {
   const attendance = document.getElementById('attendance');

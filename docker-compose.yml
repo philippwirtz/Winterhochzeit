@@ -2,27 +2,37 @@ version: "3.9"
 
 services:
   app:
-    build: ./app
-    env_file: ./app/.env
-    # WICHTIG: persistente DB unter /app/storage
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: winterhochzeit/app:latest
+    env_file: .env
+    restart: unless-stopped
     volumes:
-      - rsvp_storage:/app/storage
-    restart: always
+      - app_instance:/app/instance   # SQLite & sonstige persistente Files
+      - ./static:/app/static         # optional: statische Assets direkt mappen
+      - ./templates:/app/templates   # optional: Templates live editieren
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   caddy:
-    image: caddy:latest
-    depends_on:
-      - app
+    image: caddy:2-alpine
+    restart: unless-stopped
     ports:
       - "80:80"
+      # Wenn Domain später aktiv: 443 öffnen
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    restart: always
+    depends_on:
+      - app
 
 volumes:
-  rsvp_storage:
+  app_instance:
   caddy_data:
   caddy_config:

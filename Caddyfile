@@ -1,12 +1,29 @@
-# <DEINE_DOMAIN> ersetzen, z. B. hochzeit.example.com
-<DEINE_DOMAIN> {
-    encode zstd gzip
+# === Variante A: noch keine Domain, nur Server-IP / Hostname ===
+:80 {
+  encode gzip
+  @static {
+    path /static/* /favicon.ico /robots.txt
+  }
+  handle @static {
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+  handle {
     reverse_proxy app:8000
-
-    # optionale Security-Header zusätzlich zu Talisman
-    header {
-        X-Frame-Options "DENY"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
+  }
 }
+
+# === Variante B (später aktivieren): echte Domain mit Auto-HTTPS ===
+# yourdomain.tld {
+#   encode gzip
+#   @static {
+#     path /static/* /favicon.ico /robots.txt
+#   }
+#   handle @static {
+#     header Cache-Control "public, max-age=31536000, immutable"
+#     file_server
+#   }
+#   handle {
+#     reverse_proxy app:8000
+#   }
+# }

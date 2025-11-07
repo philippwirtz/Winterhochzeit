@@ -8,17 +8,17 @@
 - [x] RSVP für Freitag & Samstag gestalten
 - [x] RSVP Beitrag Salatbuffet (Freitag) / Kuchen (Samstag) einbauen
 - [ ] Fotograf Inhalt überarbeiten
-- [ ] Event-Ablauf statt Tagesablauf
-- [ ] Event-Ablauf Liste mittig und beim scrollen einzelne Punkte sichtbar
-  - [ ] Freitag 04.12: ab 17 Uhr gemütliches Beisammensein Krähenlochhütte mit Salatbuffet
-  - [ ] Samstag 05.12: (mit Tagesablauf & Uhrzeiten)
-    - [ ] 10.30 Uhr Standesamt
-    - [ ] ab 11 Uhr Sektempfang/Glühwein & Häppchen
-    - [ ] Fotos
-    - [ ] 15 Uhr Kaffee/Kuchen
-    - [ ] 18.30 Uhr Abendessen
-    - [ ] anschließend Party
-    - [ ] Mitternachtssnack
+- [x] Event-Ablauf statt Tagesablauf
+- [x] Event-Ablauf Liste mittig und beim scrollen einzelne Punkte sichtbar
+  - [x] Freitag 04.12: ab 17 Uhr gemütliches Beisammensein Krähenlochhütte mit Salatbuffet
+  - [x] Samstag 05.12: (mit Tagesablauf & Uhrzeiten)
+    - [x] 10.30 Uhr Standesamt
+    - [x] ab 11 Uhr Sektempfang/Glühwein & Häppchen
+    - [x] Fotos
+    - [x] 15 Uhr Kaffee/Kuchen
+    - [x] 18.30 Uhr Abendessen
+    - [x] anschließend Party
+    - [x] Mitternachtssnack
 - [x] Übernachtung -> Schlafmöglichkeiten
   - [x] INVITA Naturchalet für das gesamte Wochenende reserviert (5 Wohnungen a 4 Personen) (mit Link)
   - [x] Nahe Empfehlungen: Gästehaus Mäder - Dreiweltenkarte (mit Link)
@@ -32,5 +32,6 @@
   - [x] Spiele/Reden mit Trauzeugen absprechen
   - [x] Gibt es ein Frühstück am Sonntag? JA!
 - [ ] E-Mail Benachrichtigung für uns einschalten
-- [ ] Veranstaltung Passwortschutz
+- [x] Veranstaltung Passwortschutz
+  - [ ] Passwort für Server-Deployment ändern!
 - [ ] QR-Code & Mobile compatible

@@ -4,34 +4,37 @@
 {% block content %}
 <a id="top"></a>
 <section class="hero" id="hero" aria-label="Einladung und Countdown">
-    <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"
-        alt="Winterlandschaft mit sanftem Schneefall" />
-    <div class="hero__content">
-        <h1>
-            <span class="nowrap">{{ event_title }}</span>
-            <span class="accent">{{ event_dt.year }}</span>
-        </h1>
+    <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"/>
+<h1>
+  <span class="nowrap">{{ event_title }}</span>
+  <span class="year accent">{{ event_dt.year }}</span>
+</h1>
 
-        <div class="countdown" id="countdown" data-event="{{ event_dt.isoformat() }}">
-            <div><span id="cw">--</span><small>Wochen</small></div>
-            <div><span id="cd">--</span><small>Tage</small></div>
-            <div><span id="ch">--</span><small>Stunden</small></div>
-        </div>
-        <noscript>Countdown: {{ (event_dt - now()).days // 7 }} Wochen,
-            {{ ((event_dt - now()).days % 7) }} Tage</noscript>
+<!-- Deko-Linie + Mini-Icon -->
+<div class="hero-decoration">
+  <!-- Option A: reine Linie -->
+  <span class="rule"></span>
+  <!-- Option B: kleines Icon (optional, kann gelöscht werden) -->
+  <svg class="rings" viewBox="0 0 48 24" aria-hidden="true">
+    <circle cx="18" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
+    <circle cx="30" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
+  </svg>
+  <span class="rule"></span>
+</div>
 
-        <p class="lead">
-            Wir freuen uns, mit euch zu feiern!<br /><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong>
-        </p>
-    </div>
-    <p class="muted">
-        Hinweis: Der Countdown wird serverseitig berechnet und alle 30s
-        aktualisiert.
-    </p>
-    <div class="hero__cta">
-        <a class="btn" href="#rsvp">Jetzt zusagen</a>
-        <a class="btn btn--ghost" href="#infos">Mehr Infos</a>
-    </div>
+<div class="countdown-line" id="countdown" data-event="{{ event_dt.isoformat() }}">
+  Noch <span id="cw">--</span> Wochen, <span id="cd">--</span> Tage und <span id="ch">--</span> Stunden
+</div>
+
+<p class="lead">Wir freuen uns, mit euch zu feiern!<br></p>
+  <p class="lead"><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong></p>
+  
+<div class="hero__actions">
+  <a class="btn btn--elevated" href="#rsvp">Jetzt zusagen</a>
+  <a class="btn btn--ghost btn--elevated" href="#infos">Mehr Infos</a>
+</div>
+
+
 </section>
 
 <section id="infos" class="section section--light">
@@ -67,44 +70,88 @@
     </div>
 </section>
 
-<section id="ablauf" class="section">
-    <div class="container">
-        <h2>Event-Ablauf</h2>
-        <ol class="timeline">
-            <li>
-                <time datetime="{{ event_dt.strftime('%Y-%m-%dT15:00') }}">15:00</time>
-                <div>
-                    <h3>Trauung</h3>
-                    <p>Begrüßung, Trauzeremonie & Auszug mit Funkenregen.</p>
-                </div>
-            </li>
-            <li>
-                <time datetime="{{ event_dt.strftime('%Y-%m-%dT16:00') }}">16:00</time>
-                <div>
-                    <h3>Empfang</h3>
-                    <p>
-                        Glühwein, Punsch & Häppchen im Innenhof (wärmende Feuerschalen
-                        vorhanden).
-                    </p>
-                </div>
-            </li>
-            <li>
-                <time datetime="{{ event_dt.strftime('%Y-%m-%dT18:30') }}">18:30</time>
-                <div>
-                    <h3>Buffet & Live-Musik</h3>
-                    <p>Buffeteröffnung, Reden & erster Tanz.</p>
-                </div>
-            </li>
-            <li>
-                <time datetime="{{ event_dt.strftime('%Y-%m-%dT21:30') }}">21:30</time>
-                <div>
-                    <h3>Party mit DJ</h3>
-                    <p>Open End - Bar & Mitternachtssnack.</p>
-                </div>
-            </li>
-        </ol>
-    </div>
+<section id="ablauf" class="section section--light">
+  <div class="container">
+    <h2 class="section-title">Event-Ablauf</h2>
+    <p class="section-subtitle muted">Zeiten sind Richtwerte - Änderungen möglich.</p>
+
+    <ol class="timeline timeline--center">
+
+      <!-- Freitag -->
+      <li class="timeline__day reveal" style="--i:0" aria-label="Freitag">
+        <div class="timeline__daybadge">
+          <span class="timeline__weekday">Freitag</span>
+          <span class="timeline__date">{{ friday_start.strftime('%d.%m.%Y') }}</span>
+        </div>
+      </li>
+
+      <li class="timeline__item reveal" style="--i:1">
+        <time class="timeline__time" datetime="{{ friday_start.strftime('%Y-%m-%dT17:00') }}">17:00</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Krähenlochhütte</h3>
+          <p class="timeline__text">Ab 17 Uhr gemütliches Beisammensein Krähenlochhütte mit Salatbuffet.</p>
+        </div>
+      </li>
+
+      <!-- Samstag -->
+      <li class="timeline__day reveal" style="--i:2" aria-label="Samstag">
+        <div class="timeline__daybadge">
+          <span class="timeline__weekday">Samstag</span>
+          <span class="timeline__date">{{ saturday_start.strftime('%d.%m.%Y') }}</span>
+        </div>
+      </li>
+
+      <li class="timeline__item reveal" style="--i:3">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT10:30') }}">10:30</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Trauung</h3>
+          <p class="timeline__text">Im Standesamt Bad Dürrheim.</p>
+        </div>
+      </li>
+
+      <li class="timeline__item reveal" style="--i:4">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT11:00') }}">11:00</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Empfang</h3>
+          <p class="timeline__text">Sektempfang & Häppchen, Gruppenfotos & gute Laune.</p>
+        </div>
+      </li>
+
+      <li class="timeline__item reveal" style="--i:5">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT15:00') }}">15:00</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Kaffee und Kuchen</h3>
+          <p class="timeline__text">Kaffee und Kuchen.</p>
+        </div>
+      </li>
+
+      <li class="timeline__item reveal" style="--i:6">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT18:30') }}">18:30</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Abendessen</h3>
+          <p class="timeline__text">Leckerlecker.</p>
+        </div>
+      </li>
+
+    <li class="timeline__item reveal" style="--i:6">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT20:00') }}">20:00</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Party!</h3>
+          <p class="timeline__text">Aufgehtsabgehts.</p>
+        </div>
+      </li>
+
+    <li class="timeline__item reveal" style="--i:7">
+        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT23:30') }}">23:30</time>
+        <div class="timeline__card">
+          <h3 class="timeline__title">Mitternachtssnack</h3>
+          <p class="timeline__text">Leckerlecker.</p>
+        </div>
+      </li>     
+    </ol>
+  </div>
 </section>
+
 
 <section id="location" class="section section--light">
   <div class="container">

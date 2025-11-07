@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="gate-wrap">
+  <div class="gate-card card">
+    <div class="gate-illus" aria-hidden="true">
+      <svg viewBox="0 0 120 60" class="rings">
+        <defs>
+          <linearGradient id="rg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="var(--accent)" />
+            <stop offset="1" stop-color="color-mix(in lab, var(--accent) 75%, #fff)" />
+          </linearGradient>
+        </defs>
+        <circle cx="45" cy="30" r="20" fill="none" stroke="url(#rg)" stroke-width="4" />
+        <circle cx="75" cy="30" r="20" fill="none" stroke="url(#rg)" stroke-width="4" />
+      </svg>
+    </div>
+
+    <h1 class="gate-title">Zugangscode erforderlich</h1>
+    <p class="muted gate-sub">Bitte gib den Code von eurer Einladung ein, um die Seite zu sehen.</p>
+
+    {% if error %}
+      <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form action="{{ url_for('gate', next=request.args.get('next')) }}" method="post" class="gate-form" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label class="grid--span-2">
+        <span>Zugangscode</span>
+        <div class="input-group">
+          <input
+            id="code"
+            type="password"
+            name="code"
+            inputmode="text"
+            autocomplete="current-password"
+            required
+            class="code-input"
+            placeholder="z. B. Winter2026!"
+            aria-describedby="codeHelp"
+          />
+          <button class="btn-eye" type="button" aria-label="Code anzeigen/ausblenden">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </button>
+        </div>
+        <small id="codeHelp" class="muted">Der Code ist für alle Gäste gleich.</small>
+      </label>
+
+      <div class="form-actions">
+        <button class="btn btn--elevated" type="submit">Weiter</button>
+      </div>
+    </form>
+
+    <details class="gate-faq">
+      <summary>Kein Code zur Hand?</summary>
+      <p>Schreibt uns kurz – wir helfen sofort weiter 💌</p>
+    </details>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const input = document.getElementById('code');
+    const btn   = document.querySelector('.btn-eye');
+    if (!input || !btn) return;
+    btn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      input.focus();
+    });
+    setTimeout(() => input && input.focus(), 50);
+  })();
+</script>
+{% endblock %}
