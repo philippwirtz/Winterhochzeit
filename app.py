@@ -65,7 +65,7 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     MAX_CONTENT_LENGTH=512 * 1024,
     PREFERRED_URL_SCHEME="https" if not IS_DEV else "http",
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # Gate-Login bleibt für X Tage gültig
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
 )
 
 # Admin BasicAuth
@@ -95,6 +95,8 @@ Talisman(
 
 # CSRF & Rate Limit
 CSRFProtect(app)
+
+# Flask-Limiter (v2/v3 Kompatibilität weitgehend)
 limiter = Limiter(get_remote_address, app=app, default_limits=["200/hour"])
 
 # Proxy fix
@@ -156,6 +158,7 @@ class RSVP(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     attendance_days = db.Column(db.String(10), nullable=False, default="sat")  # "fri" | "sat" | "both"
     contribution = db.Column(db.String(300))  # Salat/Kuchen etc.
+    meal_choice = db.Column(db.String(20))  # "vegetarian" | "meat"
 
 # ---------- E-Mail ----------
 def send_rsvp_mail(entry: RSVP):
@@ -176,12 +179,12 @@ def send_rsvp_mail(entry: RSVP):
     tos = [addr.strip() for addr in mail_to.split(",") if addr.strip()]
 
     msg = EmailMessage()
-    msg["Subject"] = f"[RSVP] {entry.name} – {'Zusage' if entry.attendance=='yes' else 'Absage'}"
+    msg["Subject"] = f"[RSVP] {EVENT_TITLE}: {entry.name} – {'Zusage' if entry.attendance=='yes' else 'Absage'}"
     msg["From"] = mail_from
     msg["To"] = ", ".join(tos)
 
     body = [
-        f"Neue RSVP für {os.getenv('EVENT_TITLE', 'Event')}",
+        f"Neue RSVP für {EVENT_TITLE}",
         "",
         f"Name: {entry.name}",
         f"E-Mail: {entry.email}",
@@ -191,18 +194,17 @@ def send_rsvp_mail(entry: RSVP):
         f"Personen: {entry.guests}",
         f"Notizen: {entry.notes or '-'}",
         f"Zeitpunkt: {entry.created_at}",
+        f"Essen: {entry.meal_choice or '-'}",
     ]
     msg.set_content("\n".join(body))
 
     try:
         if use_ssl or port == 465:
-            import smtplib
             with smtplib.SMTP_SSL(host, port, timeout=15) as s:
                 if user and pwd:
                     s.login(user, pwd)
                 s.send_message(msg)
         else:
-            import smtplib
             with smtplib.SMTP(host, port, timeout=15) as s:
                 s.ehlo()
                 try:
@@ -314,6 +316,7 @@ def submit_rsvp():
     consent = request.form.get("consent") == "on"
     attendance_days = (request.form.get("attendance_days") or "").strip()
     contribution = escape((request.form.get("contribution") or "").strip())[:300]
+    meal_choice = (request.form.get("meal_choice") or "").strip()
 
     errors = []
     if not name:
@@ -324,12 +327,17 @@ def submit_rsvp():
         errors.append("Bitte wähle, ob du kommen kannst.")
 
     valid_days = ("fri", "sat", "both")
+
+    # --- FIX: Validiere sauber und setze Felder nur bei Absage leer ---
     if attendance == "yes":
+        if meal_choice not in ("vegetarian", "meat"):
+            errors.append("Bitte wähle deine Essensoption.")
         if attendance_days not in valid_days:
             errors.append("Bitte wähle, für welche Tage du zusagst (Fr/Sa/Beide).")
-    else:
+    else:  # Absage
         attendance_days = ""
         contribution = ""
+        meal_choice = ""
 
     try:
         guests = int(guests_raw or 1)
@@ -349,14 +357,16 @@ def submit_rsvp():
         return render_template("result.html", ok=False, messages=errors, event_title=EVENT_TITLE), 400
 
     entry = RSVP(
-        name=name, 
-        email=email, 
+        name=name,
+        email=email,
         attendance=attendance,
-        guests=guests, 
-        notes=notes, 
+        guests=guests,
+        notes=notes,
+        song=song or None,
         consent=consent,
-        attendance_days=attendance_days, 
-        contribution=contribution
+        attendance_days=attendance_days,
+        contribution=contribution,
+        meal_choice=meal_choice
     )
     db.session.add(entry)
     db.session.commit()
@@ -491,12 +501,22 @@ def admin_rsvps_update():
         attendance_days = r.attendance_days
 
     contribution = escape((request.form.get("contribution") or r.contribution or "").strip())[:300]
+    meal_choice = (request.form.get("meal_choice") or r.meal_choice or "").strip()
+    if meal_choice not in ("vegetarian", "meat", ""):
+        meal_choice = r.meal_choice
+
+    # Wenn Absage im Admin geändert wird: begleitende Felder auf leer setzen
+    if attendance == "no":
+        attendance_days = ""
+        contribution = ""
+        meal_choice = ""
 
     r.attendance = attendance
     r.attendance_days = attendance_days
     r.guests = guests
     r.notes = notes
     r.contribution = contribution
+    r.meal_choice = meal_choice
     db.session.commit()
     return redirect(url_for("admin_rsvps"))
 
@@ -524,7 +544,8 @@ def export_csv():
     import io
     buf = io.StringIO(newline="")
     writer = csv.writer(buf, delimiter=";")
-    writer.writerow(["Datum", "Name", "E-Mail", "Status", "Tage", "Personen", "Spende", "Notizen"])
+    writer.writerow(["Datum", "Name", "E-Mail", "Status", "Tage", "Personen", "Spende", "Essen", "Notizen"])
+
     for r in rows:
         writer.writerow([
             r.created_at.strftime("%d.%m.%Y %H:%M"),
@@ -534,6 +555,7 @@ def export_csv():
             r.attendance_days or "",
             r.guests or 1,
             safe_csv_cell(r.contribution or ""),
+            safe_csv_cell(r.meal_choice or ""),
             safe_csv_cell(r.notes or ""),
         ])
 
@@ -629,7 +651,8 @@ def test_mail():
         song=None,
         consent=True,
         attendance_days="both",
-        contribution="Zitronenkuchen"
+        contribution="Zitronenkuchen",
+        meal_choice="vegetarian",
     )
     try:
         send_rsvp_mail(dummy)
@@ -637,6 +660,16 @@ def test_mail():
     except Exception as e:
         print("Fehler beim Testversand:", e)
 
+@app.cli.command("alter-db-add-meal")
+def alter_db_add_meal():
+    """Einmalige Migration: Spalte meal_choice ergänzen (SQLite)."""
+    with app.app_context():
+        try:
+            db.session.execute(text("ALTER TABLE rsvp ADD COLUMN meal_choice VARCHAR(20)"))
+            db.session.commit()
+            print("Spalte meal_choice hinzugefügt.")
+        except Exception as e:
+            print("Spalte meal_choice evtl. schon vorhanden oder Fehler:", e)
 
 # ---------- Run ----------
 if __name__ == "__main__":

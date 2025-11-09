@@ -31,7 +31,8 @@
   - [x] Geschenke: Das schönste Geschenk ist, dass ihr mit uns feiert. Falls ihr uns etwas schenken wollt, ist ein Kuvertbriefkasten aufgestellt.
   - [x] Spiele/Reden mit Trauzeugen absprechen
   - [x] Gibt es ein Frühstück am Sonntag? JA!
-- [ ] E-Mail Benachrichtigung für uns einschalten
+- [x] E-Mail Benachrichtigung für uns einschalten
 - [x] Veranstaltung Passwortschutz
   - [ ] Passwort für Server-Deployment ändern!
-- [ ] QR-Code & Mobile compatible
+- [x] Mobile compatible
+- [ ] QR-Code zur Veranstaltung

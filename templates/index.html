@@ -1,40 +1,41 @@
-{% extends "base.html" %} {% block head %}
-<!-- Optional, aktualisiert die Seite alle 30 Sekunden für den Countdown (ohne JS) -->
+{% extends "base.html" %}
+
+{% block head %}
+<!-- Countdown wird per JS aktualisiert (ohne Reload) -->
 {% endblock %}
+
 {% block content %}
 <a id="top"></a>
 <section class="hero" id="hero" aria-label="Einladung und Countdown">
-    <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"/>
-<h1>
-  <span class="nowrap">{{ event_title }}</span>
-  <span class="year accent">{{ event_dt.year }}</span>
-</h1>
+    <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"
+         alt="Jasmin & Philipp – Einladung zur Winterhochzeit" />
 
-<!-- Deko-Linie + Mini-Icon -->
-<div class="hero-decoration">
-  <!-- Option A: reine Linie -->
-  <span class="rule"></span>
-  <!-- Option B: kleines Icon (optional, kann gelöscht werden) -->
-  <svg class="rings" viewBox="0 0 48 24" aria-hidden="true">
-    <circle cx="18" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
-    <circle cx="30" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
-  </svg>
-  <span class="rule"></span>
-</div>
+    <h1>
+        <span class="nowrap">{{ event_title }}</span>
+        <span class="year accent">{{ event_dt.year }}</span>
+    </h1>
 
-<div class="countdown-line" id="countdown" data-event="{{ event_dt.isoformat() }}">
-  Noch <span id="cw">--</span> Wochen, <span id="cd">--</span> Tage und <span id="ch">--</span> Stunden
-</div>
+    <div class="hero-decoration" aria-hidden="true">
+        <span class="rule"></span>
+        <svg class="rings" viewBox="0 0 48 24">
+            <circle cx="18" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
+            <circle cx="30" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+        <span class="rule"></span>
+    </div>
 
-<p class="lead">Wir freuen uns, mit euch zu feiern!<br></p>
-  <p class="lead"><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong></p>
-  
-<div class="hero__actions">
-  <a class="btn btn--elevated" href="#rsvp">Jetzt zusagen</a>
-  <a class="btn btn--ghost btn--elevated" href="#infos">Mehr Infos</a>
-</div>
+    <!-- ISO-8601 mit 'T' für robustes Parsen -->
+    <div class="countdown-line" id="countdown" data-event="{{ event_dt.strftime('%Y-%m-%dT%H:%M:%S') }}" aria-live="polite">
+        Noch <span id="cw">--</span> Wochen, <span id="cd">--</span> Tage und <span id="ch">--</span> Stunden
+    </div>
 
+    <p class="lead">Wir freuen uns, mit euch zu feiern!</p>
+    <p class="lead"><strong>{{ event_dt.strftime("%d.%m.%Y, %H:%M") }}</strong></p>
 
+    <div class="hero__actions">
+        <a class="btn btn--elevated" href="#rsvp">Jetzt zusagen</a>
+        <a class="btn btn--ghost btn--elevated" href="#infos">Mehr Infos</a>
+    </div>
 </section>
 
 <section id="infos" class="section section--light">
@@ -44,26 +45,30 @@
             <article class="feature">
                 <h3>Dresscode</h3>
                 <p>
-                    Festlich-warm: Elegante Outfits, Mantel, Schal & bequeme Schuhe.
+                    Schick und auf alle Fälle tanzbar.
+                    Denkt auch an etwas Warmes, es besteht am Rande des Schwarzwaldes die Möglichkeit, dass es schneit.
                 </p>
             </article>
             <article class="feature">
                 <h3>Standesamt</h3>
-                <p>Leider ist im Standesamt nur begrenzter Platz, daher bitten wir nur die persönlich angesprochenen
-                    Gäste, mitzukommen.
-                    Nach der Trauung wird es aber natürlich ein Get-Together geben!
+                <p>
+                    Leider ist im Standesamt nur begrenzter Platz; bitte nur die persönlich angesprochenen
+                    Gäste mitkommen. Nach der Trauung geht es dann mit allen zusammen weiter.
                 </p>
             </article>
             <article class="feature">
                 <h3>Mitbringsel und Geschenke</h3>
                 <p>
-                    Der Text hier muss noch bearbeitet werden.
+                    Am meisten wünschen wir uns ein schönes Wochenende & Fest mit euch!
+                    Wer mag, kann gern etwas Kulinarisches zum Salat- oder Kuchenbuffet beisteuern.
+                    Ansonsten steht ein „Briefkasten“ für Glückwunschkarten bereit.
                 </p>
             </article>
             <article class="feature">
                 <h3>Fotograf</h3>
                 <p>
-                    Der Text hier muss noch bearbeitet werden.
+                    Es gibt eine:n professionelle:n Fotograf:in und eine „Wanderkamera“.
+                    Lasst die Handys gern in den Taschen – die Bilder bekommt ihr im Nachgang.
                 </p>
             </article>
         </div>
@@ -71,152 +76,144 @@
 </section>
 
 <section id="ablauf" class="section section--light">
-  <div class="container">
-    <h2 class="section-title">Event-Ablauf</h2>
-    <p class="section-subtitle muted">Zeiten sind Richtwerte - Änderungen möglich.</p>
+    <div class="container">
+        <h2 class="section-title">Event-Ablauf</h2>
+        <p class="section-subtitle muted">Zeiten sind Richtwerte – Änderungen möglich.</p>
 
-    <ol class="timeline timeline--center">
+        <ol class="timeline timeline--center">
+            <!-- Freitag -->
+            <li class="timeline__day reveal" style="--i:0" aria-label="Freitag">
+                <div class="timeline__daybadge">
+                    <span class="timeline__weekday">Freitag</span>
+                    <span class="timeline__date">{{ friday_start.strftime('%d.%m.%Y') }}</span>
+                </div>
+            </li>
 
-      <!-- Freitag -->
-      <li class="timeline__day reveal" style="--i:0" aria-label="Freitag">
-        <div class="timeline__daybadge">
-          <span class="timeline__weekday">Freitag</span>
-          <span class="timeline__date">{{ friday_start.strftime('%d.%m.%Y') }}</span>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:1">
+                <time class="timeline__time" datetime="{{ friday_start.strftime('%Y-%m-%dT17:00') }}">17:00</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Krähenlochhütte</h3>
+                    <p class="timeline__text">
+                        Ab 17 Uhr gemütliches Beisammensein in der Krähenlochhütte in Gutmadingen mit Abendessen.
+                        (Hinweis: keine Toilette, nur der Wald.)
+                    </p>
+                </div>
+            </li>
 
-      <li class="timeline__item reveal" style="--i:1">
-        <time class="timeline__time" datetime="{{ friday_start.strftime('%Y-%m-%dT17:00') }}">17:00</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Krähenlochhütte</h3>
-          <p class="timeline__text">Ab 17 Uhr gemütliches Beisammensein Krähenlochhütte mit Salatbuffet.</p>
-        </div>
-      </li>
+            <!-- Samstag -->
+            <li class="timeline__day reveal" style="--i:2" aria-label="Samstag">
+                <div class="timeline__daybadge">
+                    <span class="timeline__weekday">Samstag</span>
+                    <span class="timeline__date">{{ saturday_start.strftime('%d.%m.%Y') }}</span>
+                </div>
+            </li>
 
-      <!-- Samstag -->
-      <li class="timeline__day reveal" style="--i:2" aria-label="Samstag">
-        <div class="timeline__daybadge">
-          <span class="timeline__weekday">Samstag</span>
-          <span class="timeline__date">{{ saturday_start.strftime('%d.%m.%Y') }}</span>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:3">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT10:30') }}">10:30</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Trauung</h3>
+                    <p class="timeline__text">Im Standesamt Bad Dürrheim.</p>
+                </div>
+            </li>
 
-      <li class="timeline__item reveal" style="--i:3">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT10:30') }}">10:30</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Trauung</h3>
-          <p class="timeline__text">Im Standesamt Bad Dürrheim.</p>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:4">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT11:00') }}">11:00</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Empfang</h3>
+                    <p class="timeline__text">Sektempfang & Häppchen, Gruppenfotos & gute Laune.</p>
+                </div>
+            </li>
 
-      <li class="timeline__item reveal" style="--i:4">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT11:00') }}">11:00</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Empfang</h3>
-          <p class="timeline__text">Sektempfang & Häppchen, Gruppenfotos & gute Laune.</p>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:5">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT15:00') }}">15:00</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Kaffee und Kuchen</h3>
+                    <p class="timeline__text">Mit unseren Lieblingskuchen!</p>
+                </div>
+            </li>
 
-      <li class="timeline__item reveal" style="--i:5">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT15:00') }}">15:00</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Kaffee und Kuchen</h3>
-          <p class="timeline__text">Kaffee und Kuchen.</p>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:6">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT18:30') }}">18:30</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Abendessen</h3>
+                    <p class="timeline__text">Leckerlecker.</p>
+                </div>
+            </li>
 
-      <li class="timeline__item reveal" style="--i:6">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT18:30') }}">18:30</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Abendessen</h3>
-          <p class="timeline__text">Leckerlecker.</p>
-        </div>
-      </li>
+            <li class="timeline__item reveal" style="--i:6">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT20:00') }}">20:00</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Party!</h3>
+                    <p class="timeline__text">#Aufgehtsabgehts.</p>
+                </div>
+            </li>
 
-    <li class="timeline__item reveal" style="--i:6">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT20:00') }}">20:00</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Party!</h3>
-          <p class="timeline__text">Aufgehtsabgehts.</p>
-        </div>
-      </li>
-
-    <li class="timeline__item reveal" style="--i:7">
-        <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT23:30') }}">23:30</time>
-        <div class="timeline__card">
-          <h3 class="timeline__title">Mitternachtssnack</h3>
-          <p class="timeline__text">Leckerlecker.</p>
-        </div>
-      </li>     
-    </ol>
-  </div>
+            <li class="timeline__item reveal" style="--i:7">
+                <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT23:30') }}">23:30</time>
+                <div class="timeline__card">
+                    <h3 class="timeline__title">Mitternachtssnack</h3>
+                    <p class="timeline__text">Leckerlecker.</p>
+                </div>
+            </li>
+        </ol>
+    </div>
 </section>
-
 
 <section id="location" class="section section--light">
-  <div class="container">
-    <h2>Location &amp; Anfahrt</h2>
-    <p>
-      <strong>{{ event_location_name }}</strong><br />
-      {{ event_location_address }}
-    </p>
-
-    <div class="cards">
-      <!-- Karte 1: bestehende Location -->
-      <article class="card">
-        <h3>Kurgarten</h3>
-        <div class="map-wrap" role="region" aria-label="Karte der Hauptlocation">
-          <iframe
-            title="Karte Hauptlocation"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=8.535510599613191%2C48.01650023164518%2C8.538021147251131%2C48.01766284331602&amp;layer=mapnik&amp;marker=48.0170815407576%2C8.53676587343216"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            style="border:0"
-          ></iframe>
-        </div>
+    <div class="container">
+        <h2>Location &amp; Anfahrt</h2>
         <p>
-          <a href="https://www.openstreetmap.org/?mlat=48.0170815407576&amp;mlon=8.53676587343216#map=19/48.0170815407576/8.53676587343216" target="_blank" rel="noopener">Größere Karte anzeigen</a>
+            <strong>{{ event_location_name }}</strong><br />
+            {{ event_location_address }}
         </p>
-      </article>
 
-      <!-- Karte 2: zusätzliche Adresse -->
-      <article class="card">
-        <h3>Krähenlochhütte</h3>
-        <div class="map-wrap" role="region" aria-label="Karte zweite Adresse">
-          <iframe
-            title="Karte zweite Adresse"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=8.611612915992739%2C47.901016549440335%2C8.614123463630678%2C47.90218176280629&amp;layer=mapnik&amp;marker=47.9015991594017%2C8.612868189811707"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            style="border:0"
-          ></iframe>
+        <div class="cards">
+            <article class="card">
+                <h3>Kurgarten</h3>
+                <div class="map-wrap" role="region" aria-label="Karte der Hauptlocation">
+                    <iframe title="Karte Hauptlocation"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=8.535510599613191%2C48.01650023164518%2C8.538021147251131%2C48.01766284331602&amp;layer=mapnik&amp;marker=48.0170815407576%2C8.53676587343216"
+                        loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border:0"></iframe>
+                </div>
+                <p>
+                    <a href="https://www.openstreetmap.org/?mlat=48.0170815407576&amp;mlon=8.53676587343216#map=19/48.0170815407576/8.53676587343216"
+                       target="_blank" rel="noopener noreferrer">Größere Karte anzeigen</a>
+                </p>
+            </article>
+
+            <article class="card">
+                <h3>Krähenlochhütte</h3>
+                <div class="map-wrap" role="region" aria-label="Karte zweite Adresse">
+                    <iframe title="Karte zweite Adresse"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=8.611612915992739%2C47.901016549440335%2C8.614123463630678%2C47.90218176280629&amp;layer=mapnik&amp;marker=47.9015991594017%2C8.612868189811707"
+                        loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border:0"></iframe>
+                </div>
+                <p>
+                    <a href="https://www.openstreetmap.org/?mlat=47.901599&amp;mlon=8.612868#map=19/47.901599/8.612868"
+                       target="_blank" rel="noopener noreferrer">Größere Karte anzeigen</a>
+                </p>
+            </article>
         </div>
-        <p>
-          <a href="https://www.openstreetmap.org/?mlat=47.901599&amp;mlon=8.612868#map=19/47.901599/8.612868" target="_blank" rel="noopener">Größere Karte anzeigen</a>
-        </p>
-      </article>
     </div>
-  </div>
 </section>
-
 
 <section id="uebernachtung" class="section">
     <div class="container">
-        <h2>Schlaftmöglichkeiten</h2>
+        <h2>Schlafmöglichkeiten</h2>
         <p>
-            Wir haben in folgenden Hotels Zimmerkontingente hinterlegt (Stichwort „{{
-            event_title }}“):
+            Auf den bekannten Websites gibt es viele Übernachtungsmöglichkeiten in Bad Dürrheim.
+            Folgende empfehlen sich besonders:
         </p>
         <div class="cards">
             <article class="card">
                 <h3>INVITA Natur Chalets</h3>
-                <p>Wir haben das gesamte Chalet (5 Wohnungen a 4 Personen) für euch reserviert.</p>
-                <p><a href="https://www.invita-natur-chalets.de/" rel="nofollow">Anschauen</a></p>
+                <p>Wir haben das gesamte Chalet (5 Wohnungen à 4 Personen) für euch reserviert.</p>
+                <p><a href="https://www.invita-natur-chalets.de/" rel="nofollow noopener noreferrer" target="_blank">Anschauen</a></p>
             </article>
             <article class="card">
                 <h3>Gästehaus Mäder</h3>
                 <p>Auch sehr nah zum Kurgarten.</p>
-                <p><a href="https://gaestehaus-maeder.com/" rel="nofollow">Zimmer reservieren</a></p>
+                <p><a href="https://gaestehaus-maeder.com/" rel="nofollow noopener noreferrer" target="_blank">Zimmer reservieren</a></p>
             </article>
             <article class="card">
                 <h3>Nach Rücksprache gegebenenfalls bei Jasmins Familie</h3>
@@ -231,34 +228,20 @@
         <div class="faq">
             <details>
                 <summary>Kann ich jemanden mitbringen?</summary>
-                <p>So gerne wir auch mit all euren Liebsten feiern würden, möchten wir um Verständnis bitten, dass wir nicht alle Leute einladen können. 
-                    Eingeladen sind alle Personen, die auf dem Kuvert genannt sind.
-                </p>
-            </details>
-            <details>
-                <summary>Gibt es Geschenkwünsche?</summary>
                 <p>
-                    Wir freuen uns am meisten über gemeinsame Zeit - wer dennoch etwas
-                    schenken möchte, findet Hinweise in der Einladung.
+                    So gerne wir auch mit all euren Liebsten feiern würden, können wir nicht alle einladen.
+                    Eingeladen sind die Personen, die auf dem Kuvert genannt sind.
                 </p>
             </details>
             <details>
-                <summary>Darf fotografiert werden?</summary>
-                <p>
-                    Ja! Müssenwirnochbearbeiten.
-                </p>
-            </details>
-            <details>
-                <summary> Kontakt Trauzeugen</summary>
-                <p> KontaktKontaktKontakt</p>
+                <summary>Kontakt Trauzeug:innen</summary>
+                <p>KontaktKontaktKontakt</p>
             </details>
             <details>
                 <summary>Dürfen wir Spiele vorbereiten oder eine Rede halten?</summary>
-                <p>Gerne dürft ihr Beiträge zur Belustigung bei der Hochzeit mit den Trauzeugen absprechen.</p>
-            </details>
-            <details>
-                <summary>Geht noch was am Sonntag?</summary>
-                <p>Ja! Am Sonntag wollen wir gerne mit allen, die Zeit und Lust haben, in Ulis süßer Scheune frühstücken gehen.</p>
+                <p>
+                    Sehr gern! Bitte plant Beiträge (musikalisch, lustig, kreativ) einfach mit den Trauzeug:innen.
+                </p>
             </details>
         </div>
     </div>
@@ -269,15 +252,18 @@
         <h2>RSVP bis {{ rsvp_deadline.strftime("%d.%m.%Y") }}</h2>
         <form action="{{ url_for('submit_rsvp') }}" method="post" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div class="grid">
                 <label>
                     <span>Vollständiger Name *</span>
                     <input type="text" name="name" autocomplete="name" required />
                 </label>
+
                 <label>
                     <span>E-Mail *</span>
                     <input type="email" name="email" autocomplete="email" required />
                 </label>
+
                 <!-- Komme ich -->
                 <label>
                     <span>Komme ich?</span>
@@ -288,8 +274,8 @@
                     </select>
                 </label>
 
-                <!-- Für welche Tage -->
-                <fieldset class="grid--span-2" id="days-fieldset">
+                <!-- Für welche Tage (nur bei Zusage aktiv/required) -->
+                <fieldset class="grid--span-2" id="days-fieldset" disabled>
                     <legend>Für welche Tage sagst du zu?</legend>
                     <div class="days-options">
                         <label><input type="radio" name="attendance_days" value="fri"> Freitag</label>
@@ -299,32 +285,145 @@
                     <p class="muted">Hinweis: Freitag = Salatbuffet · Samstag = Kuchenbuffet.</p>
                 </fieldset>
 
-                <!-- Salat-/Kuchenspende -->
+                <!-- Essenswunsch (nur bei Zusage required/aktiv) -->
+                <label>
+                    <span>Essenswunsch *</span>
+                    <select name="meal_choice" id="meal_choice" disabled>
+                        <option value="">Bitte auswählen</option>
+                        <option value="vegetarian">Vegetarisch</option>
+                        <option value="meat">Mit Fleisch</option>
+                    </select>
+                </label>
+
+                <!-- Salat-/Kuchenspende (nur bei Zusage aktiv) -->
                 <label class="grid--span-2">
                     <span>Salat-/Kuchenspende (optional)</span>
-                    <input type="text" name="contribution"
-                        placeholder="z. B. Caesar-Salat (Fr) / Zitronenkuchen (Sa)" />
+                    <input type="text" name="contribution" id="contribution"
+                           placeholder="z. B. Nudelsalat (Fr) / Zitronenkuchen (Sa)" disabled />
                 </label>
 
                 <label class="grid--span-2">
                     <span>Besonderes (Allergien, Kinderstuhl, etc.)</span>
                     <input type="text" name="notes" />
                 </label>
+
                 <label class="consent grid--span-2">
                     <input type="checkbox" name="consent" required />
-                    <span>Ich bin einverstanden, dass meine Angaben zur Organisation des
-                        Events gespeichert werden.
+                    <span>Ich bin einverstanden, dass meine Angaben zur Organisation des Events gespeichert werden.
                         <a href="{{ url_for('privacy') }}">Mehr erfahren</a>.</span>
                 </label>
             </div>
+
             <div class="form-actions">
                 <button class="btn" type="submit">Absenden</button>
             </div>
         </form>
+
         <p class="privacy-hint">
-            Hinweis: Wir verwenden die Daten ausschließlich für dieses Event und
-            löschen sie danach.
+            Hinweis: Wir verwenden die Daten ausschließlich für dieses Event und löschen sie danach.
         </p>
     </div>
 </section>
+
+<!-- Minimal-JS: steuert Required/Disabled abhängig von attendance -->
+<script>
+(function () {
+  const attendance = document.getElementById('attendance');
+  const daysFieldset = document.getElementById('days-fieldset');
+  const meal = document.getElementById('meal_choice');
+  const contrib = document.getElementById('contribution');
+
+  function setRequiredRadios(required) {
+    document.querySelectorAll('input[name="attendance_days"]').forEach(r => {
+      r.required = required;
+    });
+  }
+
+  function toggleByAttendance() {
+    const val = attendance.value;
+    const isYes = val === 'yes';
+
+    daysFieldset.disabled = !isYes;
+    meal.disabled = !isYes;
+    contrib.disabled = !isYes;
+
+    meal.required = isYes;
+    setRequiredRadios(isYes);
+
+    if (!isYes) {
+      // bei Absage Inhalte zurücksetzen -> deckt sich mit Backend
+      document.querySelectorAll('input[name="attendance_days"]').forEach(r => r.checked = false);
+      meal.value = '';
+      contrib.value = '';
+    }
+  }
+
+  if (attendance) {
+    attendance.addEventListener('change', toggleByAttendance);
+    // Initialzustand beim Laden
+    toggleByAttendance();
+  }
+
+  // Optional: einfacher Countdown ohne Abhängigkeiten
+  const cdEl = document.getElementById('countdown');
+  if (cdEl) {
+    const target = new Date(cdEl.dataset.event);
+    const cw = document.getElementById('cw');
+    const cd = document.getElementById('cd');
+    const ch = document.getElementById('ch');
+
+    function tick() {
+      const now = new Date();
+      let diff = Math.max(0, target - now);
+      const weeks = Math.floor(diff / (7*24*3600*1000));
+      diff -= weeks * 7*24*3600*1000;
+      const days = Math.floor(diff / (24*3600*1000));
+      diff -= days * 24*3600*1000;
+      const hours = Math.floor(diff / (3600*1000));
+      cw.textContent = weeks;
+      cd.textContent = days;
+      ch.textContent = hours;
+    }
+    tick();
+    setInterval(tick, 60 * 1000);
+  }
+})();
+</script>
+<script>
+(function() {
+  const attendance = document.getElementById('attendance');
+  const mealField = document.querySelector('label[for="meal_choice"], select[name="meal_choice"]')
+    ? document.querySelector('select[name="meal_choice"]').closest('label')
+    : null;
+
+  if (!attendance || !mealField) return;
+
+  // CSS-Transition vorbereiten (kannst du auch in CSS-Datei packen)
+  mealField.style.transition = 'opacity 0.3s ease';
+  
+  function toggleMeal() {
+    const isYes = attendance.value === 'yes';
+    if (isYes) {
+      mealField.style.opacity = '1';
+      mealField.style.pointerEvents = 'auto';
+      mealField.style.maxHeight = '200px';
+      mealField.querySelector('select').disabled = false;
+      mealField.querySelector('select').required = true;
+    } else {
+      mealField.style.opacity = '0';
+      mealField.style.pointerEvents = 'none';
+      mealField.style.maxHeight = '0';
+      mealField.querySelector('select').disabled = true;
+      mealField.querySelector('select').required = false;
+      mealField.querySelector('select').value = '';
+    }
+  }
+
+  // Initialzustand beim Laden
+  toggleMeal();
+  // Reagieren auf Änderungen
+  attendance.addEventListener('change', toggleMeal);
+})();
+</script>
+
 {% endblock %}

@@ -1,99 +1,120 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="section">
-    <div class="container">
-        <h1>RSVPs verwalten</h1>
-        <p class="muted">Gesamt: {{ total }}</p>
+  <div class="container">
+    <h1>RSVPs verwalten</h1>
+    <p class="muted">Gesamt: {{ total }}</p>
 
-        <div class="card" style="overflow:auto">
-            <table style="width:100%; border-collapse:collapse">
-                <thead>
-                    <tr>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Datum</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Name</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Status</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Tage</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Spende</th>
-                        <th style="text-align:right; padding:.5rem; border-bottom:1px solid var(--border)">Personen</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Notizen</th>
-                        <th style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">E-Mail</th>
-                        <th style="padding:.5rem; border-bottom:1px solid var(--border)">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in rsvps %}
-                    <tr>
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">
-                            {{ r.created_at.strftime("%d.%m.%Y %H:%M") }}
-                        </td>
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.name }}</td>
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">{{ r.email }}</td>
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">
-                            <form action="{{ url_for('admin_rsvps_update') }}" method="post"
-                                style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="id" value="{{ r.id }}">
-                                <select name="attendance">
-                                    <option value="yes" {{ 'selected' if r.attendance=='yes' else '' }}>Zusage</option>
-                                    <option value="no" {{ 'selected' if r.attendance=='no' else '' }}>Absage</option>
-                                </select>
-                        </td>
+    <div class="card" style="overflow:auto">
+      <table style="width:100%; border-collapse:collapse">
+        <thead>
+          <tr>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Datum</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Name</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">E-Mail</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Status</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Tage</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Spende</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Essen</th>
+            <th scope="col" style="text-align:right; padding:.5rem; border-bottom:1px solid var(--border)">Personen</th>
+            <th scope="col" style="text-align:left; padding:.5rem; border-bottom:1px solid var(--border)">Notizen</th>
+            <th scope="col" style="padding:.5rem; border-bottom:1px solid var(--border)">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rsvps %}
+          <!-- Unsichtbares Formular pro Zeile; alle Controls referenzieren es via form="f{{ r.id }}" -->
+          <form id="f{{ r.id }}" action="{{ url_for('admin_rsvps_update') }}" method="post"></form>
 
-                        <!-- NEU: Tage -->
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">
-                            <select name="attendance_days">
-                                <option value="" {{ 'selected' if not r.attendance_days }}>–</option>
-                                <option value="fri" {{ 'selected' if r.attendance_days=='fri' }}>Freitag</option>
-                                <option value="sat" {{ 'selected' if r.attendance_days=='sat' }}>Samstag</option>
-                                <option value="both" {{ 'selected' if r.attendance_days=='both' }}>Beide</option>
-                            </select>
-                        </td>
+          <tr>
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              {{ r.created_at.strftime("%d.%m.%Y %H:%M") }}
+            </td>
 
-                        <!-- NEU: Spende -->
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">
-                            <input type="text" name="contribution" value="{{ r.contribution or '' }}"
-                                placeholder="optional" style="width:100%">
-                        </td>
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              {{ r.name }}
+            </td>
 
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border); text-align:right">
-                            <input type="number" name="guests" min="1" max="10" value="{{ r.guests or 1 }}"
-                                style="width:64px; text-align:right">
-                        </td>
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <a href="mailto:{{ r.email }}">{{ r.email }}</a>
+            </td>
 
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border)">
-                            <input type="text" name="notes" value="{{ r.notes or '' }}" style="width:100%">
-                        </td>
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <select name="attendance" form="f{{ r.id }}">
+                <option value="yes" {{ 'selected' if r.attendance=='yes' else '' }}>Zusage</option>
+                <option value="no"  {{ 'selected' if r.attendance=='no'  else '' }}>Absage</option>
+              </select>
+            </td>
 
-                        <td style="padding:.5rem; border-bottom:1px solid var(--border); white-space:nowrap">
-                            <button class="btn btn--small" type="submit">Speichern</button>
-                            </form>
+            <!-- Tage -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <select name="attendance_days" form="f{{ r.id }}">
+                <option value=""     {{ 'selected' if not r.attendance_days }}>–</option>
+                <option value="fri"  {{ 'selected' if r.attendance_days=='fri'  }}>Freitag</option>
+                <option value="sat"  {{ 'selected' if r.attendance_days=='sat'  }}>Samstag</option>
+                <option value="both" {{ 'selected' if r.attendance_days=='both' }}>Beide</option>
+              </select>
+            </td>
 
-                            <form action="{{ url_for('admin_rsvps_delete') }}" method="post" style="display:inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="id" value="{{ r.id }}">
-                                <button class="btn btn--small btn--ghost" type="submit"
-                                    onclick="return confirm('Wirklich löschen?')">Löschen</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="9" style="padding:.75rem">Keine Einträge gefunden.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+            <!-- Spende -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <input type="text" name="contribution" value="{{ r.contribution or '' }}" placeholder="optional"
+                     style="width:100%" form="f{{ r.id }}">
+            </td>
 
-            </table>
-        </div>
+            <!-- Essen -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <select name="meal_choice" form="f{{ r.id }}">
+                <option value="" {{ ''==(r.meal_choice or '') and 'selected' or '' }}>–</option>
+                <option value="vegetarian" {{ 'vegetarian'==(r.meal_choice or '') and 'selected' or '' }}>Vegetarisch</option>
+                <option value="meat"       {{ 'meat'==(r.meal_choice or '')       and 'selected' or '' }}>Mit Fleisch</option>
+              </select>
+            </td>
 
-        {% if pages > 1 %}
-        <nav style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap">
-            {% for p in range(1, pages+1) %}
-            <a class="btn btn--small {{ 'btn--ghost' if p != page }}"
-                href="{{ url_for('admin_rsvps', page=p, attendance=attendance, q=q) }}">{{ p }}</a>
-            {% endfor %}
-        </nav>
-        {% endif %}
+            <!-- Personen -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border); text-align:right">
+              <input type="number" name="guests" min="1" max="10" value="{{ r.guests or 1 }}"
+                     style="width:64px; text-align:right" form="f{{ r.id }}">
+            </td>
+
+            <!-- Notizen -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border)">
+              <input type="text" name="notes" value="{{ r.notes or '' }}" style="width:100%" form="f{{ r.id }}">
+            </td>
+
+            <!-- Aktionen -->
+            <td style="padding:.5rem; border-bottom:1px solid var(--border); white-space:nowrap">
+              <!-- Hidden Felder fürs Update -->
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" form="f{{ r.id }}">
+              <input type="hidden" name="id" value="{{ r.id }}" form="f{{ r.id }}">
+
+              <button class="btn btn--small" type="submit" form="f{{ r.id }}">Speichern</button>
+
+              <form action="{{ url_for('admin_rsvps_delete') }}" method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <button class="btn btn--small btn--ghost" type="submit"
+                        onclick="return confirm('Wirklich löschen?')">Löschen</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" style="padding:.75rem">Keine Einträge gefunden.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+    {% if pages > 1 %}
+    <nav style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap">
+      {% for p in range(1, pages+1) %}
+        <a class="btn btn--small {{ 'btn--ghost' if p != page }}"
+           href="{{ url_for('admin_rsvps', page=p, attendance=attendance, q=q) }}">{{ p }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </div>
 </section>
 {% endblock %}
