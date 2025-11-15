@@ -986,3 +986,31 @@ legend {
     font-size: 0.9em;
   }
 }
+/* ======================================
+   Hero-Headline: Mobile-Fix
+   ====================================== */
+@media (max-width: 768px) {
+
+  /* Block selbst darf umbrechen und wird kleiner */
+  .hero__content h1 {
+    font-size: clamp(1.6rem, 5.2vw, 2.1rem);
+    line-height: 1.15;
+    margin: 0 0 0.8rem 0;
+    text-align: center;
+    white-space: normal;             /* h1 selbst */
+  }
+
+  /* WICHTIG: .nowrap im Hero für Mobile außer Kraft setzen */
+  .hero__content h1 .nowrap {
+    white-space: normal !important;  /* überschreibt die globale Regel */
+    display: inline;                 /* Standard */
+  }
+
+  /* Jahr darf mit um- oder drunterbrechen */
+  .hero__content h1 .year {
+    display: inline-block;
+    margin-left: .25ch;
+    margin-top: .1rem;
+    font-size: 0.9em;
+  }
+}
