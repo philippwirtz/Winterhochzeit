@@ -136,6 +136,31 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Nur auf schmalen Viewports eingreifen
+  if (window.innerWidth > 768) return;
+
+  const h1 = document.querySelector(".hero__content h1");
+  if (!h1) return;
+
+  const titleSpan = h1.querySelector(".nowrap");
+  if (!titleSpan) return;
+
+  const text = titleSpan.textContent.trim();
+  const firstSpace = text.indexOf(" ");
+
+  // Falls aus irgend einem Grund keine Leerzeichen drin sind → nichts tun
+  if (firstSpace === -1) return;
+
+  const first = text.slice(0, firstSpace);      // "Winterhochzeit"
+  const rest  = text.slice(firstSpace + 1);     // "Jasmin & Philipp"
+
+  // Inhalt ersetzen: erste Zeile + <br> + zweite Zeile
+  titleSpan.innerHTML =
+    first + '<br><span class="hero-title-line2">' + rest + '</span>';
+});
+</script>
 
   </body>
 </html>
