@@ -830,18 +830,24 @@ legend {
    ====================================== */
 @media (max-width: 768px) {
 
-  /* Header / Navigation */
+  /* ---------- Grundschrift etwas kleiner ---------- */
+  html,
+  body {
+    font-size: 18px;
+  }
+
+  /* ---------- Header / Navigation ---------- */
   .site-header {
     flex-wrap: wrap;
     justify-content: center;
-    gap: .4rem;
-    padding: .5rem .75rem;
+    gap: .35rem;
+    padding: .45rem .75rem;
   }
 
   .brand {
     flex: 1 0 100%;
     text-align: center;
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .nav-list {
@@ -854,55 +860,52 @@ legend {
   }
 
   .nav-list a {
-    padding: .5rem .7rem;
+    padding: .45rem .65rem;
   }
 
   .nav-list .btn.btn--small {
-    padding: .45rem .9rem;
+    padding: .4rem .85rem;
     font-size: .85rem;
   }
 
-  /* Hero */
+  /* ---------- Hero-Bereich: Bild flach + Text darunter ---------- */
+
   .hero {
-    min-height: 60svh;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
+    min-height: auto;              /* keine 60–70vh mehr erzwingen */
+    grid-template-rows: auto auto; /* Bild, dann Inhalt */
+    place-items: stretch;
   }
 
   .hero img {
     width: 100%;
-    height: 100%;
+    height: 190px;                 /* flaches Banner */
     object-fit: cover;
     object-position: center 25%;
   }
 
   .hero__content {
-    position: absolute;
-    left: 50%;
-    top: 55%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    max-width: 90vw;
-    padding-inline: 1rem;
+    position: static;              /* nicht mehr über dem Bild schweben */
+    transform: none;
+    max-width: 100%;
+    padding: 1.1rem 1.1rem 1.6rem;
     text-align: center;
   }
 
   .hero__content h1 {
-    font-size: clamp(1.7rem, 6vw, 2.2rem);
-    line-height: 1.1;
-    margin: 0 0 .7rem 0;
+    font-size: clamp(1.6rem, 5.4vw, 2.1rem);
+    line-height: 1.15;
+    margin: 0 0 .55rem 0;
   }
 
   .hero-decoration {
-    width: 85%;
-    gap: .5rem;
-    margin: .1rem auto .7rem;
+    width: 82%;
+    gap: .45rem;
+    margin: .05rem auto .6rem;
   }
 
   .countdown-line {
-    font-size: 1rem;
-    margin-top: .15rem;
+    font-size: .98rem;
+    margin-top: .2rem;
   }
 
   .lead {
@@ -911,8 +914,8 @@ legend {
   }
 
   .hero__actions {
-    margin-top: 1.3rem;
-    gap: .6rem;
+    margin-top: 1.25rem;
+    gap: .55rem;
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -921,7 +924,7 @@ legend {
     min-width: 9rem;
   }
 
-  /* Container nicht zu schmal */
+  /* ---------- Container minimal enger ---------- */
   .container {
     width: min(100% - 1.5rem, var(--container));
   }
