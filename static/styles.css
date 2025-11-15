@@ -947,3 +947,22 @@ legend {
     margin-top: .5rem;
   }
 }
+/* -------------------------------------------
+   MOBILE: Hero-Headline zweizeilig erzwingen
+-------------------------------------------- */
+@media (max-width: 768px) {
+
+  /* Hauptheadline umbrechen */
+  .hero__content h1 {
+    display: flex;
+    flex-direction: column;
+    white-space: normal !important;   /* Umbrechen ERZWINNEN */
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    line-height: 1.2;
+  }
+
+  /* Option: Abstände der beiden Zeilen */
+  .hero__title-line1 {
+    margin-bottom: .25rem;
+  }
+}
