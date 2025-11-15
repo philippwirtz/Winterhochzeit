@@ -964,3 +964,25 @@ legend {
     margin-top: 0.15rem;
   }
 }
+/* Hero-Headline auf Mobile: Umbrechen erlauben & etwas kleiner */
+@media (max-width: 768px) {
+  .hero__content h1 {
+    font-size: clamp(1.6rem, 5.5vw, 2.2rem);
+    line-height: 1.15;
+    margin: 0 0 0.8rem 0;
+    text-align: center;
+  }
+
+  /* WICHTIG: nowrap im Hero für Mobile deaktivieren */
+  .hero__content .nowrap {
+    white-space: normal;
+  }
+
+  /* Jahr leicht abgesetzt, kann auch auf eigene Zeile rutschen */
+  .hero__content .year {
+    display: inline-block;
+    margin-left: .25ch;
+    margin-top: .1rem;
+    font-size: 0.9em;
+  }
+}
