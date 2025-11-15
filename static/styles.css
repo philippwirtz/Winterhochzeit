@@ -1014,3 +1014,41 @@ legend {
     font-size: 0.9em;
   }
 }
+/* ======================================
+   Hero-Headline: zweizeilig auf Mobile
+   ====================================== */
+
+.hero-title {
+  margin: 0 0 1.25rem;
+  letter-spacing: .02em;
+  line-height: 1.1;
+}
+
+.hero-line {
+  display: inline;
+}
+
+.hero-line-2 .year {
+  margin-left: .35ch;
+}
+
+/* Mobile: erzwinge zwei Zeilen */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: clamp(1.5rem, 5.2vw, 2.1rem);
+    text-align: center;
+  }
+
+  .hero-line-1 {
+    display: block;            /* eigene Zeile */
+  }
+
+  .hero-line-2 {
+    display: block;            /* zweite Zeile */
+    margin-top: .15rem;
+  }
+
+  .hero-line-2 .year {
+    font-size: 0.9em;
+  }
+}
