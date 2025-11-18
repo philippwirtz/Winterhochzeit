@@ -5,3 +5,4 @@ __pycache__/
 instance/
 *.pyc
 *.db
+ToDos.md
