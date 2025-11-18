@@ -16,7 +16,7 @@
     </div>
 
     <h1 class="gate-title">Zugangscode erforderlich</h1>
-    <p class="muted gate-sub">Bitte gib den Code von eurer Einladung ein, um die Seite zu sehen.</p>
+    <p class="muted gate-sub">In welchem Land fand die Verlobung statt?</p>
 
     {% if error %}
       <div class="alert alert--error" role="alert">{{ error }}</div>
@@ -36,7 +36,6 @@
             autocomplete="current-password"
             required
             class="code-input"
-            placeholder="z. B. Winterhochzeit"
             aria-describedby="codeHelp"
           />
           <button class="btn-eye" type="button" aria-label="Code anzeigen/ausblenden">

@@ -10,10 +10,13 @@
     <img src="{{ url_for('static', filename='assets/J_P_Screenshot.jpg') }}"
          alt="Jasmin & Philipp - Einladung zur Winterhochzeit" />
 
-    <h1>
-        <span class="nowrap">{{ event_title }}</span>
-        <span class="year accent">{{ event_dt.year }}</span>
-    </h1>
+    <h1 class="hero-title">
+  <span class="hero-line hero-line-1">Winterhochzeit</span>
+  <span class="hero-line hero-line-2">
+    Jasmin &amp; Philipp
+    <span class="year accent">{{ event_dt.year }}</span>
+  </span>
+</h1>
 
     <div class="hero-decoration" aria-hidden="true">
         <span class="rule"></span>
