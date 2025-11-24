@@ -25,7 +25,7 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='styles.css') }}?v=14"
+      href="{{ url_for('static', filename='styles.css') }}?v=16"
     />
     {% block head %}{% endblock %}
   </head>
@@ -53,7 +53,7 @@
 {% if not is_gate %}
 <footer class="site-footer">
   <div class="container">
-    <p>© {{ now().year if now else 2025 }} {{ event_title }} • Mit Liebe gestaltet</p>
+    <p>© {{ now().year if now else 2025 }} {{ event_title }} - Mit Liebe gestaltet</p>
     <a href="#top" class="back-to-top">Nach oben ↑</a>
   </div>
 </footer>
