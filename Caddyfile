@@ -14,7 +14,7 @@
 # }
 
 # === Variante B (später aktivieren): echte Domain mit Auto-HTTPS ===
-HTTP → App (optional, für direkten IP-Zugriff)
+# HTTP → App (optional, für direkten IP-Zugriff)
 :80 {
     encode gzip
     reverse_proxy app:8000
