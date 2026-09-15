@@ -36,3 +36,5 @@
   - [ ] Passwort für Server-Deployment ändern!
 - [x] Mobile compatible
 - [ ] QR-Code zur Veranstaltung
+- [x] RSVP-Formular nach Ablauf der Deadline sperren (Frontend + Backend)
+- [x] Website für Hochzeitsfotos vorbereiten (/fotos-Seite + QR-Code via PHOTOS_URL)

@@ -18,6 +18,7 @@ python app.py
 - `EVENT_LOCATION_NAME` / `EVENT_LOCATION_ADDRESS`
 - `RSVP_DEADLINE` – Format `YYYY-MM-DD` (Standard: `2025-11-15`)
 - `ADMIN_KEY` – für CSV-Export `GET /admin/export.csv?key=<ADMIN_KEY>`
+- `PHOTOS_URL` – Link zur Hochzeitsfoto-Galerie; solange leer, zeigt `/fotos` nur einen "kommt bald"-Hinweis. Sobald gesetzt, erscheinen Link + QR-Code (`/fotos/qr.svg`) automatisch.
 - `SECRET_KEY` – Flask-Session/CSRF (ändere für Produktion)
 - `DATABASE_URL` – optional (z. B. `sqlite:///rsvp.db`)
 

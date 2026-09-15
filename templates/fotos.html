@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="fotos" class="section">
+    <div class="container">
+        <h2 class="section-title">Hochzeitsfotos</h2>
+
+        {% if photos_url %}
+        <p class="section-subtitle muted">Schön, dass ihr hier seid! Hier findet ihr unsere Hochzeitsfotos.</p>
+
+        <div class="cards">
+            <article class="card">
+                <h3>Zur Foto-Galerie</h3>
+                <p>
+                    <a class="btn btn--elevated" href="{{ photos_url }}" target="_blank" rel="noopener noreferrer">
+                        Fotos ansehen
+                    </a>
+                </p>
+            </article>
+
+            <article class="card">
+                <h3>Per QR-Code teilen</h3>
+                <p class="muted">Zum Scannen, z. B. für einen Aushang oder auf einer Karte.</p>
+                <div class="qr-code">
+                    <img src="{{ url_for('fotos_qr') }}" alt="QR-Code zu den Hochzeitsfotos" width="220" height="220" />
+                </div>
+            </article>
+        </div>
+        {% else %}
+        <div class="card">
+            <p>Die Hochzeitsfotos folgen nach der Hochzeit - schaut hier gern nochmal vorbei!</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

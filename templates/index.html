@@ -36,7 +36,9 @@
     <p class="lead"><strong>{{ event_dt.strftime("%d.%m.%Y") }}</strong></p>
 
     <div class="hero__actions">
+        {% if rsvp_open %}
         <a class="btn btn--elevated" href="#rsvp">Jetzt zusagen</a>
+        {% endif %}
         <a class="btn btn--ghost btn--elevated" href="#infos">Mehr Infos</a>
     </div>
 </section>
@@ -253,6 +255,7 @@
 
 <section id="rsvp" class="section">
     <div class="container">
+        {% if rsvp_open %}
         <h2>RSVP bis {{ rsvp_deadline.strftime("%d.%m.%Y") }}</h2>
         <form action="{{ url_for('submit_rsvp') }}" method="post" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -326,6 +329,18 @@
         <p class="privacy-hint">
             Hinweis: Wir verwenden die Daten ausschließlich für dieses Event und löschen sie danach.
         </p>
+        {% else %}
+        <h2>RSVP</h2>
+        <div class="card">
+            <p>
+                Die RSVP-Frist ist am <strong>{{ rsvp_deadline.strftime("%d.%m.%Y") }}</strong> abgelaufen,
+                daher ist die Anmeldung geschlossen.
+            </p>
+            <p class="muted">
+                Falls sich bei euch noch etwas ändert, meldet euch bitte direkt bei uns.
+            </p>
+        </div>
+        {% endif %}
     </div>
 </section>
 

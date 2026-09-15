@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import csv
+import io
 import re
 from functools import wraps
 from dotenv import load_dotenv
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 import smtplib
 from email.message import EmailMessage
 from markupsafe import escape
+
+import qrcode
+import qrcode.image.svg
 
 from flask import (
     Flask, render_template, request, redirect, url_for, make_response,
@@ -34,6 +38,7 @@ EVENT_DATETIME_STR = os.getenv("EVENT_DATETIME", "2026-12-05 14:00")
 EVENT_LOCATION_NAME = os.getenv("EVENT_LOCATION_NAME", "Kurgarten Bad Dürrheim")
 EVENT_LOCATION_ADDRESS = os.getenv("EVENT_LOCATION_ADDRESS", "Luisenstraße 16, 78073 Bad Dürrheim")
 RSVP_DEADLINE_STR = os.getenv("RSVP_DEADLINE", "2026-04-01")
+PHOTOS_URL = os.getenv("PHOTOS_URL", "").strip()
 
 IS_DEV = os.getenv("FLASK_DEBUG", "0") == "1" or os.getenv("ENV", "").lower() == "development"
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "0" if IS_DEV else "1") == "1"
@@ -296,6 +301,7 @@ def index():
         event_location_address=EVENT_LOCATION_ADDRESS,
         timeleft=timeleft,
         rsvp_deadline=RSVP_DEADLINE,
+        rsvp_open=(datetime.now().date() <= RSVP_DEADLINE),
         friday_start=FRIDAY_START,
         saturday_start=SATURDAY_START,
     )
@@ -350,7 +356,7 @@ def submit_rsvp():
         errors.append("Bitte bestätige die Datenschutzhinweise.")
 
     deadline_over = (datetime.now().date() > RSVP_DEADLINE)
-    if deadline_over and attendance == "yes":
+    if deadline_over:
         errors.append("Die RSVP-Deadline ist vorbei. Bitte kontaktiere uns direkt.")
 
     if errors:
@@ -562,6 +568,31 @@ def export_csv():
     resp = make_response(buf.getvalue())
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
     resp.headers["Content-Disposition"] = 'attachment; filename="rsvps.csv"'
+    return resp
+
+@app.route("/fotos")
+def fotos():
+    return render_template(
+        "fotos.html",
+        event_title=EVENT_TITLE,
+        photos_url=PHOTOS_URL,
+    )
+
+@app.route("/fotos/qr.svg")
+def fotos_qr():
+    if not PHOTOS_URL:
+        abort(404)
+    img = qrcode.make(
+        PHOTOS_URL,
+        image_factory=qrcode.image.svg.SvgPathImage,
+        box_size=10,
+        border=2,
+    )
+    buf = io.BytesIO()
+    img.save(buf)
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "image/svg+xml"
+    resp.headers["Cache-Control"] = "public, max-age=3600"
     return resp
 
 @app.route("/event.ics")
