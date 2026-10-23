@@ -457,6 +457,13 @@ def phase_open():
         check("Krähenlochhütte: Toilettenhäuschen (Plumpsklo) vorhanden",
               "Toilettenhäuschen (Plumpsklo) vorhanden" in b)
         check("Krähenlochhütte: Hinweis mit dem Wald entfernt", "nur der Wald" not in b and "keine Toilette" not in b)
+        check("Kopfzeile: Menüpunkt 'Mitfahrt'", '<a href="/mitfahrt">Mitfahrt</a>' in b)
+        check("Freitags-Karte verlinkt die Fahrgemeinschaft",
+              re.search(r'Krähenlochhütte</h3>.*?href="/mitfahrt"[^>]*>Fahrgemeinschaft', b, re.S) is not None)
+        check("CSS-Cache-Parameter ?v=18", "styles.css?v=18" in b)
+        s, _, pb = req(c, "/privacy")
+        check("Datenschutzseite nennt die Mitfahrbörse",
+              s == 200 and "Mitfahrbörse" in pb and "Zugangscode" in pb)
         s, _, b = req(c, "/fotos")
         check("/fotos erreichbar", s == 200 and "Hochzeitsfotos" in b)
         check("Kopfzeile verlinkt auf Startseite (/#ablauf)", 'href="/#ablauf"' in b)
@@ -618,13 +625,19 @@ def phase_open():
 
 def phase_closed():
     print("\n=== Phase B: RSVP geschlossen ===")
-    e = Env("2026-05-01")
+    e = Env("2026-05-01", {"CARPOOL_ENABLED": "0"})
     e.seed()
     e.start()
     try:
         c = new_client()
         pass_gate(c)
         s, _, b = req(c, "/")
+        check("CARPOOL_ENABLED=0: kein Menüpunkt und kein Link zur Fahrgemeinschaft",
+              'href="/mitfahrt"' not in b and "Fahrgemeinschaft" not in b)
+        s1, _, _ = req(c, "/mitfahrt")
+        s2, _, _ = req(c, "/mitfahrt/mein/" + "a" * 32)
+        s3, _, _ = req(c, "/mitfahrt", {"csrf_token": csrf(b) or "x"})
+        check("CARPOOL_ENABLED=0: Mitfahrt-Routen antworten mit 404", (s1, s2) == (404, 404) and s3 in (403, 404), f"{s1} {s2} {s3}")
         check("RSVP zu: Formular ausgeblendet", 'action="/rsvp"' not in b and "Anmeldung geschlossen" in b)
         check("RSVP zu: kein 'Jetzt zusagen' im Hero", "Jetzt zusagen" not in b)
         check("RSVP zu: kein RSVP-Button in der Kopfzeile", 'class="btn btn--small">RSVP' not in b)

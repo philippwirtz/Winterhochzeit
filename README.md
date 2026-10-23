@@ -51,6 +51,8 @@ setzt die App Cookies nur über https (Produktion).
 | `EVENT_LOCATION_NAME` / `EVENT_LOCATION_ADDRESS` | Hauptlocation (Anzeige und Kalenderdatei) | Kurgarten Bad Dürrheim |
 | `RSVP_DEADLINE` | Letzter RSVP-Tag (`YYYY-MM-DD`), danach ist das Formular gesperrt | `2026-04-01` |
 | `PHOTOS_URL` | Link zur Foto-Galerie; leer = "folgt bald", gesetzt = Link + QR-Code | leer |
+| `CARPOOL_ENABLED` | `1` = Mitfahrbörse (`/mitfahrt`) an, `0` = aus (Seiten 404, Menüpunkt und Link entfallen) | `1` |
+| `CARPOOL_RATE_LIMIT` | Limit für neue Mitfahr-Einträge pro IP. Nur erfolgreich angelegte Einträge zählen. | `6/hour` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_USE_SSL` | Mailserver für Benachrichtigungen. Ohne `SMTP_HOST` oder `MAIL_TO` wird keine Mail gesendet. | Port `587` |
 | `MAIL_FROM` / `MAIL_TO` | Absender / Empfänger (mehrere, kommagetrennt) | – |
 | `DATABASE_URL` | Datenbank-URL | `sqlite:///instance/rsvp.db` |
@@ -66,6 +68,24 @@ setzt die App Cookies nur über https (Produktion).
 - Dashboard: `/admin` (Statistik, Filter nach Status/Tage/Essen, Suche, Inline-Bearbeiten, Löschen).
 - CSV-Export: `/admin/export.csv` (Trennzeichen `;`, deutsche Beschriftungen).
 - Passwortversuche sind begrenzt (10 pro Minute und IP), alle Formulare sind CSRF-geschützt.
+
+## Mitfahrbörse (Freitagabend)
+
+Unter `/mitfahrt` (Menüpunkt "Mitfahrt", Link in der Freitags-Karte der Zeitleiste) bieten Gäste
+eine Fahrt zur Krähenlochhütte an oder suchen eine Mitfahrt.
+
+- **Eintrag:** Rolle (🚗 Ich fahre / 🙋 Ich suche), Vorname, Startort/PLZ, Hin-/Rückfahrt,
+  optional Abfahrtszeit, freie Plätze bzw. Personenzahl, Telefon und/oder E-Mail, Notiz.
+  Pflicht-Checkbox: Kontaktdaten sind für alle Gäste mit Zugangscode sichtbar.
+- **Verwaltung ohne Konto:** Nach dem Eintragen gibt es einen privaten Link
+  (`/mitfahrt/mein/<Kennung>`). Dort stehen passende Treffer (Match nach Orts-Wörtern/PLZ-Vorwahl,
+  Richtung und freien Plätzen), "Platz vergeben", "Gefunden, Eintrag schließen" und "Löschen".
+- **Kontakt:** hinter "Kontakt anzeigen" mit vorbefüllten Links für WhatsApp, Anruf und E-Mail.
+  Der Server verschickt keine Mails.
+- **Admin:** `/admin/mitfahrt` listet alle Einträge (auch geschlossene) mit Löschen-Button.
+- **Nach der Feier:** `flask --app app.py purge-rides` zeigt die Anzahl, mit `--yes` werden alle
+  Einträge gelöscht. Alternativ `CARPOOL_ENABLED=0` setzen, um die Seite abzuschalten.
+- Die Tabelle `ride` wird beim Start automatisch angelegt (`init-db`), eine Migration ist nicht nötig.
 
 ## Betrieb (Docker + Caddy)
 
@@ -92,6 +112,7 @@ flask --app app.py init-db                    # Tabellen anlegen (läuft beim Co
 flask --app app.py test-mail                  # Testmail senden, prüft die SMTP-Konfiguration
 flask --app app.py unescape-db --dry-run      # Altdaten prüfen (siehe unten)
 flask --app app.py unescape-db                # Altdaten einmalig bereinigen
+flask --app app.py purge-rides [--yes]        # Mitfahrbörse nach der Feier leeren
 ```
 
 Im Container: `docker compose exec app flask --app app.py <befehl>`.
@@ -114,8 +135,9 @@ Startet die App selbst auf Port 5100 mit temporärer Datenbank, Testzugangsdaten
 deaktiviertem Mailversand (die echte `.env` und die echte Datenbank werden nicht benutzt)
 und prüft per HTTP u. a. Gate, Admin-Login (falsches Passwort, CSRF, Open-Redirect,
 Rate-Limit), Dashboard und Filter, Bearbeiten/Löschen, deutschen CSV-Export,
-Sonderzeichen und Script-Einschleusung, den Bereinigungsbefehl sowie das Verhalten
-bei offener und bei abgelaufener RSVP-Frist. Läuft ohne zusätzliche Pakete aus
+Sonderzeichen und Script-Einschleusung, den Bereinigungsbefehl, die Mitfahrbörse
+(Logik, Anlegen, Verwaltung, Admin, Rate-Limit) sowie das Verhalten bei offener und bei
+abgelaufener RSVP-Frist. Läuft ohne zusätzliche Pakete aus
 `requirements.txt` und endet mit Exit-Code 0 bei Erfolg.
 
 ## DSGVO
@@ -129,7 +151,8 @@ bei offener und bei abgelaufener RSVP-Frist. Läuft ohne zusätzliche Pakete aus
 ## Projektstruktur
 
 ```
-app.py            Flask-App (Routen, Modell, Admin, CLI-Befehle)
+app.py            Flask-App (Routen, Modelle, Admin, CLI-Befehle)
+carpool.py        Reine Logik der Mitfahrbörse (Matching, Telefon, Kontakt-Links, Validierung)
 templates/        Jinja-Templates (index, gate, fotos, admin_*, ...)
 static/           CSS, Schriften, Bilder
 tests/            End-to-End-Tests (run_tests.py)

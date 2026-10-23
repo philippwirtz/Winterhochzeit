@@ -25,7 +25,7 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='styles.css') }}?v=17"
+      href="{{ url_for('static', filename='styles.css') }}?v=18"
     />
     {% block head %}{% endblock %}
   </head>
@@ -41,6 +41,9 @@
       <li><a href="{{ url_for('index') }}#location">Location</a></li>
       <li><a href="{{ url_for('index') }}#uebernachtung">Schlafmöglichkeiten</a></li>
       <li><a href="{{ url_for('index') }}#faq">FAQ</a></li>
+      {% if carpool_enabled %}
+      <li><a href="{{ url_for('carpool') }}">Mitfahrt</a></li>
+      {% endif %}
       <li><a href="{{ url_for('fotos') }}">Fotos</a></li>
       {% if rsvp_open %}
       <li><a href="{{ url_for('index') }}#rsvp" class="btn btn--small">RSVP</a></li>

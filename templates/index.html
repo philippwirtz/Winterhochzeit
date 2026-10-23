@@ -111,6 +111,9 @@
                     <p class="timeline__text">
                         Ab 17 Uhr gemütliches Beisammensein in der Krähenlochhütte in Gutmadingen mit Abendessen.
                         Toilettenhäuschen (Plumpsklo) vorhanden.
+                        {% if carpool_enabled %}
+                        <br /><a href="{{ url_for('carpool') }}">Fahrgemeinschaft bilden →</a>
+                        {% endif %}
                     </p>
                 </div>
             </li>
