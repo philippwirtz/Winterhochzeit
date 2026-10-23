@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1>Mitfahrbörse</h1>
+    <p><a href="{{ url_for('admin_dashboard') }}">← Zum Dashboard</a>, {{ rides|length }} Einträge</p>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="ride-table">
+        <thead>
+          <tr>
+            <th>Datum</th><th>Rolle</th><th>Name</th><th>Startort</th><th>Wann</th><th>Plätze</th>
+            <th>Telefon</th><th>E-Mail</th><th>Notiz</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rides %}
+          <tr>
+            <td>{{ r.created_at.strftime("%d.%m.%y %H:%M") if r.created_at else "" }}</td>
+            <td>{{ KIND_LABELS[r.kind] }}</td>
+            <td><strong>{{ r.name }}</strong></td>
+            <td>{{ r.origin }}</td>
+            <td>{{ DIRECTION_LABELS[r.direction] }}{% if r.depart_time %}, {{ r.depart_time }}{% endif %}</td>
+            <td>{% if r.kind == 'offer' %}{{ r.seats_taken }} / {{ r.seats }}{% else %}{{ r.seats }}{% endif %}</td>
+            <td>{{ r.phone }}</td>
+            <td>{{ r.email }}</td>
+            <td>{{ r.note }}</td>
+            <td>{{ 'aktiv' if r.active else 'geschlossen' }}</td>
+            <td>
+              <form action="{{ url_for('admin_carpool_delete') }}" method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <button class="btn btn--small btn--ghost" type="submit"
+                        onclick='return confirm({{ (r.name ~ " wirklich löschen?")|tojson }})'>Löschen</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="muted">Keine Einträge.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

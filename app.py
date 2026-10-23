@@ -773,6 +773,28 @@ def carpool_action_page(token, aktion):
     db.session.commit()
     return redirect(url_for("carpool_mine", token=ride.token))
 
+@app.route("/admin/mitfahrt", endpoint="admin_carpool")
+@limiter.limit("60/minute")
+@admin_protected
+def admin_carpool_page():
+    rides = Ride.query.order_by(Ride.created_at.desc(), Ride.id.desc()).all()
+    return render_template("admin_carpool.html", event_title=EVENT_TITLE, rides=rides)
+
+@app.route("/admin/mitfahrt/loeschen", methods=["POST"], endpoint="admin_carpool_delete")
+@limiter.limit("60/minute")
+@admin_protected
+def admin_carpool_delete_page():
+    try:
+        rid = int(request.form.get("id", ""))
+    except ValueError:
+        abort(400)
+    ride = db.session.get(Ride, rid)
+    if ride is None:
+        abort(404)
+    db.session.delete(ride)
+    db.session.commit()
+    return redirect(url_for("admin_carpool"))
+
 @app.route("/event.ics")
 def event_ics():
     start = EVENT_DT
@@ -921,6 +943,18 @@ def unescape_db(dry_run, force):
         with open(marker, "w", encoding="utf-8") as fh:
             fh.write("done\n")
     print(f"{changed_rows} Einträge bereinigt.")
+
+@app.cli.command("purge-rides")
+@click.option("--yes", is_flag=True, help="Wirklich alle Mitfahr-Einträge löschen.")
+def purge_rides(yes):
+    """Löscht alle Einträge der Mitfahrbörse (nach der Feier). Ohne --yes nur Anzahl anzeigen."""
+    count = Ride.query.count()
+    if not yes:
+        print(f"{count} Einträge vorhanden. Zum Löschen mit --yes ausführen.")
+        return
+    Ride.query.delete()
+    db.session.commit()
+    print(f"{count} Einträge gelöscht.")
 
 # ---------- Run ----------
 if __name__ == "__main__":

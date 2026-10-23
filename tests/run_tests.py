@@ -359,6 +359,55 @@ def phase_carpool_manage():
         e.stop()
 
 
+def phase_carpool_admin():
+    print("\n=== Phase C3: Mitfahrbörse (Admin und Aufräumen) ===")
+    e = Env("2099-12-31", {"CARPOOL_RATE_LIMIT": "500/hour"})
+    e.seed()
+    e.start()
+    try:
+        c, anon = new_client(), new_client()
+        pass_gate(c)
+        pass_gate(anon)
+        insert_ride(e, name="Aktiv Ada", phone="0176 1234567", email="ada@example.com")
+        insert_ride(e, name="Zu Zed", active=0, email="zed@example.com")
+        insert_ride(e, name="X'Y & <b>z</b>", email="x@example.com")
+        rid = lambda name: db_scalar(e, "SELECT id FROM ride WHERE name=?", name)
+
+        s, h, _ = req(c, "/admin/mitfahrt")
+        check("/admin/mitfahrt ohne Login -> Login", s == 302 and "/admin/login" in h["Location"], f"{s}")
+        _, _, gb = req(anon, "/gate")
+        s, h, _ = req(anon, "/admin/mitfahrt/loeschen", {"csrf_token": csrf(gb), "id": str(rid("Zu Zed"))})
+        check("Löschen ohne Admin-Login blockiert", s == 302 and "/admin/login" in h.get("Location", "")
+              and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Zu Zed'") == 1, f"{s}")
+
+        admin_login(c)
+        s, _, b = req(c, "/admin/mitfahrt")
+        check("Admin-Liste: aktive und geschlossene Einträge mit Kontaktdaten",
+              s == 200 and all(x in b for x in ("Aktiv Ada", "Zu Zed", "0176 1234567", "ada@example.com", "zed@example.com")), str(s))
+        check("Admin-Liste: Sonderzeichen escaped, Bestätigung als JSON-String",
+              "X&#39;Y &amp; &lt;b&gt;z&lt;/b&gt;" in b and "<b>z</b>" not in b and "onclick='return confirm(" in b and "\\u0027" in b)
+        _, _, db_page = req(c, "/admin")
+        check("Dashboard verlinkt auf /admin/mitfahrt", 'href="/admin/mitfahrt"' in db_page)
+
+        tok = csrf(b)
+        s, h, _ = req(c, "/admin/mitfahrt/loeschen", {"csrf_token": tok, "id": str(rid("Zu Zed"))})
+        check("Löschen entfernt genau einen Eintrag und leitet zurück",
+              s == 302 and h["Location"].endswith("/admin/mitfahrt")
+              and db_scalar(e, "SELECT COUNT(*) FROM ride") == 2 and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Zu Zed'") == 0, f"{s}")
+        s, _, _ = req(c, "/admin/mitfahrt/loeschen", {"csrf_token": tok, "id": "99999"})
+        check("Unbekannte id -> 404", s == 404, str(s))
+
+        out = e.cli("purge-rides")
+        check("purge-rides ohne --yes meldet nur die Anzahl", "2 Einträge" in out and "--yes" in out
+              and db_scalar(e, "SELECT COUNT(*) FROM ride") == 2, out[-200:])
+        out = e.cli("purge-rides", "--yes")
+        _, _, ov = req(c, "/mitfahrt")
+        check("purge-rides --yes löscht alle, Übersicht ist leer",
+              "2 Einträge gelöscht" in out and db_scalar(e, "SELECT COUNT(*) FROM ride") == 0 and "Noch keine Einträge" in ov, out[-200:])
+    finally:
+        e.stop()
+
+
 def phase_carpool_limit():
     print("\n=== Phase D: Mitfahrbörse (Rate-Limit) ===")
     e = Env("2099-12-31")
@@ -700,6 +749,7 @@ if __name__ == "__main__":
         phase_closed()
         phase_carpool()
         phase_carpool_manage()
+        phase_carpool_admin()
         phase_carpool_limit()
     except SystemExit as ex:
         print(ex)

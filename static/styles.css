@@ -1178,3 +1178,13 @@ legend {
 .ride-linkbox input { width: 100%; }
 .ride-manage { display: flex; flex-wrap: wrap; gap: .5rem; }
 .ride-manage form { margin: 0; }
+
+.ride-table { border-collapse: collapse; width: 100%; }
+.ride-table th,
+.ride-table td {
+  border-bottom: 1px solid var(--border);
+  padding: .6rem .5rem;
+  text-align: left;
+  vertical-align: top;
+}
+.ride-table th { color: var(--muted); font-size: .875rem; }
