@@ -359,8 +359,115 @@ def phase_closed():
         e.stop()
 
 
+def phase_unit():
+    print("\n=== Unit: carpool.py ===")
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(ROOT))
+    import carpool
+
+    t0 = datetime(2026, 11, 1, 12, 0)
+    counter = iter(range(1, 1000))
+
+    def R(**kw):
+        base = dict(id=next(counter), kind="offer", name="Anna", origin="Villingen", direction="both",
+                    depart_time="", seats=3, seats_taken=0, phone="", email="", note="", active=True,
+                    created_at=t0)
+        base.update(kw)
+        return SimpleNamespace(**base)
+
+    ids = lambda rides: [r.id for r in rides]
+
+    # --- Orts-Tokens und Score ---
+    check("Tokens: Bindestrich trennt Wörter", carpool.place_tokens("Villingen-Schwenningen") == {"villingen", "schwenningen"})
+    check("Tokens: PLZ-Vorwahl", carpool.place_tokens("78050 Villingen") == {"villingen", "plz780"})
+    check("Tokens: ß wird ss", carpool.place_tokens("Straße") == {"strasse"})
+    check("Tokens: zu kurz/leer", carpool.place_tokens("ab") == set() and carpool.place_tokens("") == set())
+    check("Score: Teilwort", carpool.match_score("Villingen", "Villingen-Schwenningen") == 1)
+    check("Score: gleiche PLZ-Vorwahl", carpool.match_score("78050 VS", "78054 Schwenningen") == 1)
+    check("Score: kein Match / zu kurze Wörter", carpool.match_score("Freiburg", "Konstanz") == 0 and carpool.match_score("XY", "XY") == 0)
+    check("Richtung", carpool.directions_overlap("both", "there") and not carpool.directions_overlap("there", "back") and carpool.directions_overlap("back", "both"))
+
+    # --- Telefon ---
+    check("Telefon: 0176", carpool.normalize_phone("0176 1234567") == "491761234567")
+    check("Telefon: +49", carpool.normalize_phone("+49 176 1234567") == "491761234567")
+    check("Telefon: 0049", carpool.normalize_phone("0049 176 1234567") == "491761234567")
+    check("Telefon: +49 (0)", carpool.normalize_phone("+49 (0) 176 1234567") == "491761234567")
+    check("Telefon: Trennzeichen", carpool.normalize_phone("0176/123-4567") == "491761234567")
+    check("Telefon: andere Vorwahl bleibt", carpool.normalize_phone("+41 79 123 45 67") == "41791234567")
+    check("Telefon: ungültig", all(carpool.normalize_phone(x) is None for x in ("", "12345", "0176 ABC4567", "+49 176 1234567 8901")))
+
+    # --- Matching ---
+    S = R(kind="seek", direction="there", seats=2)
+    O1 = R(origin="Villingen-Schwenningen")
+    O2 = R(origin="Freiburg")
+    O3 = R(origin="Villingen", seats=3, seats_taken=2)
+    O4 = R(origin="Villingen", active=False)
+    O5 = R(origin="Villingen", direction="back")
+    S2 = R(kind="seek", direction="there", seats=1)
+    m, o = carpool.find_matches(S, [S, O1, O2, O3, O4, O5, S2])
+    check("Match: nur Gegenrolle, passende Richtung, freie Plätze, aktiv; Rest unter 'others'",
+          ids(m) == [O1.id] and ids(o) == [O2.id], f"{ids(m)} {ids(o)}")
+    A = R(origin="Villingen Schwenningen", created_at=t0 + timedelta(hours=2))
+    B = R(origin="Villingen", created_at=t0)
+    C = R(origin="Villingen", created_at=t0 + timedelta(hours=1))
+    Sx = R(kind="seek", origin="78050 Villingen Schwenningen", direction="both", seats=1)
+    m, _ = carpool.find_matches(Sx, [C, B, A])
+    check("Match: höherer Score zuerst, bei Gleichstand älterer Eintrag zuerst", ids(m) == [A.id, B.id, C.id], str(ids(m)))
+    offer = R(kind="offer", seats=3, seats_taken=1, origin="Villingen")
+    k2 = R(kind="seek", seats=2, origin="Villingen")
+    k3 = R(kind="seek", seats=3, origin="Villingen")
+    m, o = carpool.find_matches(offer, [k2, k3])
+    check("Match: Platzregel gilt auch aus Sicht des Angebots", ids(m) == [k2.id] and ids(o) == [], f"{ids(m)} {ids(o)}")
+
+    # --- Nachricht und Kontakt-Links ---
+    msg_offer = carpool.message_text(R(kind="offer", name="Anna"))
+    msg_seek = carpool.message_text(R(kind="seek", name="Ben", origin="Villingen"))
+    check("Nachricht: Fahrtangebot", "Fahrtangebot" in msg_offer and "Anna" in msg_offer and "Krähenlochhütte" in msg_offer)
+    check("Nachricht: Mitfahr-Anfrage", "Mitfahr-Anfrage" in msg_seek and "Villingen" in msg_seek)
+    both = carpool.contact_links(R(phone="0176 1234567", email="anna@example.com"))
+    check("Links: Reihenfolge und Arten bei Telefon+E-Mail", [x["kind"] for x in both] == ["whatsapp", "tel", "mail"], str(both))
+    hrefs = {x["kind"]: x["href"] for x in both}
+    check("Links: WhatsApp", hrefs["whatsapp"].startswith("https://wa.me/491761234567?text="))
+    check("Links: Anrufen", hrefs["tel"] == "tel:+491761234567")
+    check("Links: E-Mail", hrefs["mail"].startswith("mailto:anna@example.com?subject="))
+    check("Links: nur E-Mail", [x["kind"] for x in carpool.contact_links(R(email="a@example.com"))] == ["mail"])
+    check("Links: nur Telefon", [x["kind"] for x in carpool.contact_links(R(phone="0176 1234567"))] == ["whatsapp", "tel"])
+    odd = carpool.contact_links(R(name="Ann\"a <b> & 'C'", phone="0176 1234567", email="anna@example.com"))
+    check("Links: Sonderzeichen im Namen brechen keinen href", not any(c in x["href"] for x in odd for c in "\"<> "))
+
+    # --- Eingabe-Validierung ---
+    def email_ok(a):
+        return "@" in a and "." in a.split("@")[-1] and " " not in a
+
+    def F(**over):
+        f = dict(kind="offer", name="Anna", origin="78050 Villingen", direction="both", depart_time="ca. 16:00",
+                 seats="3", phone="", email="anna@example.com", note="", consent="on")
+        f.update(over)
+        return f
+
+    def errs(**over):
+        return carpool.validate_ride_input(F(**over), email_ok)[1]
+
+    cleaned, e0 = carpool.validate_ride_input(F(), email_ok)
+    check("Validierung: gültiges Angebot", e0 == [] and cleaned["seats"] == 3 and cleaned["kind"] == "offer", str(e0))
+    check("Validierung: ohne Einwilligung", any("Einwilligung" in x for x in errs(consent="")))
+    check("Validierung: ohne Kontakt", any("Telefon oder E-Mail" in x for x in errs(email="", phone="")))
+    check("Validierung: ungültige E-Mail", any("gültige E-Mail" in x for x in errs(email="kaputt")))
+    check("Validierung: ungültiges Telefon", any("gültige Telefonnummer" in x for x in errs(phone="0176 ABC")))
+    check("Validierung: leerer Name", any("Namen" in x for x in errs(name="  ")))
+    check("Validierung: leerer Startort", any("Startort" in x for x in errs(origin="")))
+    check("Validierung: Angebot mit 0 oder 9 Plätzen", errs(seats="0") != [] and errs(seats="9") != [])
+    check("Validierung: Suche mit 7 Personen oder Text", errs(kind="seek", seats="7") != [] and errs(seats="viele") != [])
+    check("Validierung: ungültige Rolle/Richtung", errs(kind="x") != [] and errs(direction="x") != [])
+    check("Validierung: Name auf 60 Zeichen gekürzt", len(carpool.validate_ride_input(F(name="a" * 100), email_ok)[0]["name"]) == 60)
+    check("Validierung: Emoji bleiben erhalten", carpool.validate_ride_input(F(name="Anna 🚗"), email_ok)[0]["name"] == "Anna 🚗")
+
+
 if __name__ == "__main__":
     try:
+        phase_unit()
         phase_open()
         phase_closed()
     except SystemExit as ex:
