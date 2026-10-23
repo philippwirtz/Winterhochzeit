@@ -1,4 +1,4 @@
-{% macro ride_card(r, match=false) %}
+{% macro ride_card(r, match=false, link=true) %}
 {% set full = r.kind == 'offer' and r.seats_taken >= r.seats %}
 <article class="ride-card{% if full %} ride-card--full{% endif %}">
     <header class="ride-card__head">
@@ -6,6 +6,7 @@
         {% if match %}<span class="ride-badge ride-badge--match">Match</span>{% endif %}
         {% if r.token in own %}<span class="ride-badge ride-badge--own">Dein Eintrag</span>{% endif %}
         {% if full %}<span class="ride-badge ride-badge--full">Voll</span>{% endif %}
+        {% if link and r.token in own %}<a class="ride-manage-link" href="{{ url_for('carpool_mine', token=r.token) }}">Verwalten →</a>{% endif %}
     </header>
     <p class="ride-meta"><span>ab {{ r.origin }}</span><span>{{ DIRECTION_LABELS[r.direction] }}</span>{% if r.depart_time %}<span>{{ r.depart_time }}</span>{% endif %}</p>
     <p class="ride-seats">

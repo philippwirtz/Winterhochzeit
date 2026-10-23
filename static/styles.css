@@ -1197,3 +1197,5 @@ legend {
   vertical-align: top;
 }
 .ride-table th { color: var(--muted); font-size: .875rem; }
+
+.ride-manage-link { font-size: .85rem; margin-left: auto; }

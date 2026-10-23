@@ -707,9 +707,9 @@ def carpool_page():
             return redirect(url_for("carpool"))
         cleaned, errors = carpool.validate_ride_input(request.form, valid_email)
         if not errors:
-            existing = Ride.query.filter_by(
-                active=True, kind=cleaned["kind"], name=cleaned["name"], origin=cleaned["origin"],
-                phone=cleaned["phone"], email=cleaned["email"]).first()
+            # Nur Einträge der eigenen Session zählen als Duplikat. Die Angaben sind für alle
+            # sichtbar und dürfen niemanden auf den Verwaltungslink eines fremden Eintrags führen.
+            existing = Ride.query.filter(Ride.token.in_(own_tokens())).filter_by(active=True, **cleaned).first()
             if existing is None:
                 existing = Ride(token=secrets.token_hex(16), consent=True, **cleaned)
                 db.session.add(existing)

@@ -303,6 +303,22 @@ def phase_carpool_manage():
         check("Neuer Eintrag: Verwaltungsseite lädt, Badge in der Übersicht",
               s == 302 and s2 == 200 and "Neu Nina" in nb and "Dein Eintrag" in ov2, f"{s} {s2}")
 
+        # --- Review-Funde: fremde Einträge, Verwalten-Link, Absenden-Button ---
+        nina_loc = h["Location"]
+        nina_token = nina_loc.rsplit("/", 1)[-1]
+        _, _, ov_owner = req(c2, "/mitfahrt")
+        _, _, ov_other = req(c, "/mitfahrt")
+        check("Eigener Eintrag: 'Verwalten'-Link in der Übersicht, für andere nicht sichtbar",
+              f'href="/mitfahrt/mein/{nina_token}"' in ov_owner and "Verwalten" in ov_owner and nina_token not in ov_other)
+        _, _, f1 = req(c, "/mitfahrt")
+        s, h_other, _ = ride_poster(c, csrf(f1))(name="Neu Nina", email="nina@example.com")
+        check("Identische sichtbare Angaben übernehmen keinen fremden Eintrag (neuer Eintrag, anderer Link)",
+              s == 302 and h_other["Location"] != nina_loc
+              and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Neu Nina'") == 2, f"{s} {h_other.get('Location')}")
+        _, _, fb = req(c2, "/mitfahrt")
+        check("Formular deaktiviert den Absenden-Button beim Senden",
+              "addEventListener('submit'" in fb and "disabled = true" in fb)
+
         # --- Plätze ---
         tok = csrf(b)
         offer = insert_ride(e, name="Seat Sam", seats=3, origin="Konstanz", email="sam@example.com")

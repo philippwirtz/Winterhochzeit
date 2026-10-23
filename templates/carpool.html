@@ -123,6 +123,15 @@
   }
   radios.forEach(function (r) { r.addEventListener('change', update); });
   update();
+
+  // Doppelklick: den Absenden-Button sperren, sonst entstehen zwei Einträge
+  var form = document.querySelector('.ride-form');
+  if (form) {
+    form.addEventListener('submit', function () {
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Wird gesendet …'; }
+    });
+  }
 })();
 </script>
 {% endblock %}
