@@ -36,13 +36,13 @@
   <a class="brand" href="{{ url_for('index') }}">❄ {{ event_title }}</a>
   <nav>
     <ul class="nav-list">
-      <li><a href="#infos">Infos</a></li>
-      <li><a href="#ablauf">Ablauf</a></li>
-      <li><a href="#location">Location</a></li>
-      <li><a href="#uebernachtung">Schlafmöglichkeiten</a></li>
-      <li><a href="#faq">FAQ</a></li>
+      <li><a href="{{ url_for('index') }}#infos">Infos</a></li>
+      <li><a href="{{ url_for('index') }}#ablauf">Ablauf</a></li>
+      <li><a href="{{ url_for('index') }}#location">Location</a></li>
+      <li><a href="{{ url_for('index') }}#uebernachtung">Schlafmöglichkeiten</a></li>
+      <li><a href="{{ url_for('index') }}#faq">FAQ</a></li>
       <li><a href="{{ url_for('fotos') }}">Fotos</a></li>
-      <li><a href="#rsvp" class="btn btn--small">RSVP</a></li>
+      <li><a href="{{ url_for('index') }}#rsvp" class="btn btn--small">RSVP</a></li>
     </ul>
   </nav>
 </header>
