@@ -463,13 +463,23 @@ def phase_open():
         check("RSVP offen: RSVP-Button in der Kopfzeile", 'class="btn btn--small">RSVP' in b)
         check("RSVP offen: Vorschautext 'jetzt zusagen'", 'content="Alle Infos - jetzt zusagen' in b)
         check("Footer zeigt aktuelles Jahr", f"© {datetime.now().year} " in b)
-        check("Info-Hinweis zu Schüsseln/Behältern", "Schüsseln und Behälter" in b)
+        infos_html = b[b.index('id="infos"'):b.index('id="ablauf"')]
+        faq_html = b[b.index('id="faq"'):b.index('id="rsvp"')]
+        check("FAQ: Eintrag 'Wann und wo kann ich meinen Kuchen abgeben?' mit Antwort",
+              re.search(r"<summary>Wann und wo kann ich meinen Kuchen abgeben\?</summary>\s*<p>\s*"
+                        r"Kuchen können am Samstag ab 11 Uhr im Kurgarten abgegeben werden\.", faq_html) is not None)
+        check("FAQ: Eintrag 'Was ist mit Schüsseln und Behältern?' mit Antwort",
+              re.search(r"<summary>Was ist mit Schüsseln und Behältern\?</summary>\s*<p>\s*"
+                        r"Wer Kuchen oder Salat mitbringt: Bitte nehmt eure Schüsseln und Behälter nach dem Fest\s+wieder mit\.",
+                        faq_html) is not None)
+        check("Info-Bereich: Kuchenabgabe und Schüsseln stehen dort nicht mehr",
+              not any(x in infos_html for x in ("Kuchenabgabe", "abgegeben werden", "Schüsseln", "Behälter")))
+        check("Info-Karte 'Mitbringsel und Geschenke' bleibt erhalten",
+              "Mitbringsel und Geschenke" in infos_html and "Briefkasten" in infos_html)
         check("Parkplatz-Karte vorhanden", "Parkplatz Kurgarten" in b)
         check("Zeitleiste: Empfang um 12:30",
               re.search(r'T12:30">12:30</time>\s*<div class="timeline__card">\s*<h3 class="timeline__title">Empfang', b) is not None)
         check("Zeitleiste: kein Empfang mehr um 13:00", not re.search(r'13:00</time>\s*<div class="timeline__card">\s*<h3 class="timeline__title">Empfang', b))
-        check("Infokarte Kuchenabgabe: ab 11 Uhr im Kurgarten",
-              "Kuchenabgabe" in b and "ab 11 Uhr im Kurgarten abgegeben" in b)
         check("Krähenlochhütte: Toilettenhäuschen (Plumpsklo) vorhanden",
               "Toilettenhäuschen (Plumpsklo) vorhanden" in b)
         check("Krähenlochhütte: Hinweis mit dem Wald entfernt", "nur der Wald" not in b and "keine Toilette" not in b)
