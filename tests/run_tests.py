@@ -172,6 +172,14 @@ def phase_open():
         check("Footer zeigt aktuelles Jahr", f"© {datetime.now().year} " in b)
         check("Info-Hinweis zu Schüsseln/Behältern", "Schüsseln und Behälter" in b)
         check("Parkplatz-Karte vorhanden", "Parkplatz Kurgarten" in b)
+        check("Zeitleiste: Empfang um 12:30",
+              re.search(r'T12:30">12:30</time>\s*<div class="timeline__card">\s*<h3 class="timeline__title">Empfang', b) is not None)
+        check("Zeitleiste: kein Empfang mehr um 13:00", not re.search(r'13:00</time>\s*<div class="timeline__card">\s*<h3 class="timeline__title">Empfang', b))
+        check("Infokarte Kuchenabgabe: ab 11 Uhr im Kurgarten",
+              "Kuchenabgabe" in b and "ab 11 Uhr im Kurgarten abgegeben" in b)
+        check("Krähenlochhütte: Toilettenhäuschen (Plumpsklo) vorhanden",
+              "Toilettenhäuschen (Plumpsklo) vorhanden" in b)
+        check("Krähenlochhütte: Hinweis mit dem Wald entfernt", "nur der Wald" not in b and "keine Toilette" not in b)
         s, _, b = req(c, "/fotos")
         check("/fotos erreichbar", s == 200 and "Hochzeitsfotos" in b)
         check("Kopfzeile verlinkt auf Startseite (/#ablauf)", 'href="/#ablauf"' in b)
