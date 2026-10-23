@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_ride_card.html" import ride_card with context %}
+
+{% macro action_form(name, label, ghost=false, confirm='') %}
+<form method="post" action="{{ url_for('carpool_action', token=ride.token, aktion=name) }}"{% if confirm %} onsubmit='return confirm({{ confirm|tojson }})'{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn{% if ghost %} btn--ghost{% endif %}" type="submit">{{ label }}</button>
+</form>
+{% endmacro %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <h2 class="section-title">Dein Eintrag</h2>
+        <p class="section-subtitle"><a href="{{ url_for('carpool') }}">← Zur Mitfahrbörse</a></p>
+
+        <div class="ride-mine">
+            {{ ride_card(ride) }}
+
+            <div class="card ride-linkbox">
+                <h3>Dein privater Link</h3>
+                <p>Speichere diesen Link, um deinen Eintrag später zu ändern oder zu löschen. Wer den Link kennt, kann den Eintrag verwalten.</p>
+                <input type="text" readonly value="{{ link }}" onclick="this.select()" aria-label="Privater Link zu deinem Eintrag">
+            </div>
+
+            <div class="ride-manage">
+                {% if ride.active %}
+                    {% if ride.kind == 'offer' %}
+                        {{ action_form('platz-vergeben', 'Platz vergeben') }}
+                        {{ action_form('platz-frei', 'Platz wieder frei', ghost=true) }}
+                    {% endif %}
+                    {{ action_form('schliessen', 'Gefunden, Eintrag schließen', ghost=true) }}
+                {% else %}
+                    {{ action_form('oeffnen', 'Wieder öffnen') }}
+                {% endif %}
+                {{ action_form('loeschen', 'Löschen', ghost=true, confirm='Eintrag wirklich löschen?') }}
+            </div>
+        </div>
+
+        {% if ride.active %}
+        <h3>Passende Treffer</h3>
+        {% for r in matches %}{{ ride_card(r, match=true) }}{% else %}
+        <p class="muted">Noch kein Treffer. Schau später noch einmal vorbei, es kommen laufend neue Einträge dazu.</p>
+        {% endfor %}
+
+        {% if others %}
+        <h3>Weitere Möglichkeiten</h3>
+        <p class="muted">Anderer Startort, aber Zeit und Plätze passen. Vielleicht liegt es ja auf dem Weg.</p>
+        {% for r in others %}{{ ride_card(r) }}{% endfor %}
+        {% endif %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

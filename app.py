@@ -715,7 +715,7 @@ def carpool_page():
                 db.session.add(existing)
                 db.session.commit()
             remember_token(existing.token)
-            return redirect(f"/mitfahrt/mein/{existing.token}")
+            return redirect(url_for("carpool_mine", token=existing.token))
         form, status = request.form, 400
 
     rides = Ride.query.filter_by(active=True).order_by(Ride.created_at.desc(), Ride.id.desc()).all()
@@ -725,6 +725,53 @@ def carpool_page():
         offers=[r for r in rides if r.kind == "offer"], seeks=[r for r in rides if r.kind == "seek"],
         own=set(own_tokens()),
     ), status
+
+RIDE_ACTIONS = ("platz-vergeben", "platz-frei", "schliessen", "oeffnen", "loeschen")
+
+def get_ride_or_404(token: str) -> Ride:
+    if not re.fullmatch(r"[0-9a-f]{32}", token):
+        abort(404)
+    ride = Ride.query.filter_by(token=token).first()
+    if ride is None:
+        abort(404)
+    return ride
+
+@app.route("/mitfahrt/mein/<token>", endpoint="carpool_mine")
+def carpool_mine_page(token):
+    if not CARPOOL_ENABLED:
+        abort(404)
+    ride = get_ride_or_404(token)
+    remember_token(ride.token)
+    matches, others = ([], [])
+    if ride.active:
+        matches, others = carpool.find_matches(ride, Ride.query.filter_by(active=True).all())
+    link = url_for("carpool_mine", token=ride.token, _external=True, _scheme=app.config["PREFERRED_URL_SCHEME"])
+    return render_template(
+        "carpool_mine.html", event_title=EVENT_TITLE, ride=ride, matches=matches, others=others,
+        link=link, own=set(own_tokens()),
+    )
+
+@app.route("/mitfahrt/mein/<token>/<aktion>", methods=["GET", "POST"], endpoint="carpool_action")
+@limiter.limit("30/hour", methods=["POST"])
+def carpool_action_page(token, aktion):
+    if not CARPOOL_ENABLED or request.method != "POST":
+        abort(404)
+    ride = get_ride_or_404(token)
+    if aktion not in RIDE_ACTIONS:
+        abort(404)
+    if aktion == "loeschen":
+        db.session.delete(ride)
+        db.session.commit()
+        return redirect(url_for("carpool"))
+    if aktion == "schliessen":
+        ride.active = False
+    elif aktion == "oeffnen":
+        ride.active = True
+    elif ride.kind == "offer":
+        delta = 1 if aktion == "platz-vergeben" else -1
+        ride.seats_taken = max(0, min(ride.seats, ride.seats_taken + delta))
+    db.session.commit()
+    return redirect(url_for("carpool_mine", token=ride.token))
 
 @app.route("/event.ics")
 def event_ics():

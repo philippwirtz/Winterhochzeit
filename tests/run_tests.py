@@ -258,6 +258,107 @@ def phase_carpool():
         e.stop()
 
 
+def phase_carpool_manage():
+    print("\n=== Phase C2: Mitfahrbörse (Verwaltung, Treffer, Aktionen) ===")
+    import html as htmllib
+    e = Env("2099-12-31", {"CARPOOL_RATE_LIMIT": "500/hour"})
+    e.seed()
+    e.start()
+    try:
+        c, c2 = new_client(), new_client()
+        pass_gate(c)
+        pass_gate(c2)
+        seeker = insert_ride(e, kind="seek", name="Susi", origin="Villingen", direction="there", seats=2, email="susi@example.com")
+        insert_ride(e, name="Olga", origin="Villingen-Schwenningen", phone="0176 1234567", email="o1@example.com")
+        insert_ride(e, name="Otto", origin="Freiburg", email="o2@example.com")
+        insert_ride(e, name="Voll Vic", origin="Villingen", seats=3, seats_taken=2, email="o3@example.com")
+        insert_ride(e, name="Inaktiv Ina", origin="Villingen", active=0, email="o4@example.com")
+        insert_ride(e, name="Rück Rita", origin="Villingen", direction="back", email="o5@example.com")
+        insert_ride(e, name="O'Neil & <b>y</b>", origin='Villingen "Nord"', phone="0171 7654321", email='we"ird@example.com')
+
+        s, _, b = req(c, f"/mitfahrt/mein/{seeker}")
+        check("Verwaltungsseite erreichbar", s == 200 and "Susi" in b, str(s))
+        head, _, rest = b.partition("Weitere Möglichkeiten")
+        check("Treffer: passendes Angebot mit Badge 'Match' und Kontakt-Buttons",
+              "Passende Treffer" in head and "Olga" in head and "Match" in head and "WhatsApp" in head)
+        check("Weitere Möglichkeiten: Angebot ohne Orts-Treffer", "Otto" in rest and "Otto" not in head)
+        check("Ausgeschlossen: volles, inaktives und Rückfahrt-Angebot",
+              not any(x in b for x in ("Voll Vic", "Inaktiv Ina", "Rück Rita")))
+        check("Sonderzeichen im Treffer sind escaped",
+              "O&#39;Neil &amp; &lt;b&gt;y&lt;/b&gt;" in b and "<b>y</b>" not in b and "Villingen &#34;Nord&#34;" in b)
+        hrefs = [htmllib.unescape(h) for h in re.findall(r'href="((?:mailto:|tel:|https://wa\.me/)[^"]*)"', b)]
+        check("Kontakt-Links ohne Anführungszeichen, <, > oder Leerzeichen",
+              len(hrefs) >= 4 and not any(ch in h for h in hrefs for ch in "\"<> "), str(hrefs[:3]))
+        check("Link-Hinweis mit vollständiger URL", "Speichere diesen Link" in b and f"{BASE}/mitfahrt/mein/{seeker}" in b)
+
+        _, _, ov = req(c, "/mitfahrt")
+        _, _, ov2 = req(c2, "/mitfahrt")
+        check("Session-Badge 'Dein Eintrag' nur nach Besuch des Links", "Dein Eintrag" in ov and "Dein Eintrag" not in ov2)
+
+        # --- neuer Eintrag per Formular: Redirect führt auf eine funktionierende Verwaltungsseite ---
+        _, _, f = req(c2, "/mitfahrt")
+        s, h, _ = ride_poster(c2, csrf(f))(name="Neu Nina", email="nina@example.com")
+        s2, _, nb = req(c2, h["Location"])
+        _, _, ov2 = req(c2, "/mitfahrt")
+        check("Neuer Eintrag: Verwaltungsseite lädt, Badge in der Übersicht",
+              s == 302 and s2 == 200 and "Neu Nina" in nb and "Dein Eintrag" in ov2, f"{s} {s2}")
+
+        # --- Plätze ---
+        tok = csrf(b)
+        offer = insert_ride(e, name="Seat Sam", seats=3, origin="Konstanz", email="sam@example.com")
+        seat = lambda t: db_scalar(e, "SELECT seats_taken FROM ride WHERE token=?", t)
+
+        def act(token, action, **data):
+            return req(c, f"/mitfahrt/mein/{token}/{action}", {"csrf_token": tok, **data})
+
+        codes = [act(offer, "platz-vergeben")[0] for _ in range(4)]
+        check("Plätze: 4. 'Platz vergeben' geht nicht über 3 hinaus", codes == [302] * 4 and seat(offer) == 3, f"{codes} {seat(offer)}")
+        codes = [act(offer, "platz-frei")[0] for _ in range(5)]
+        check("Plätze: 'Platz frei' sinkt nie unter 0", codes == [302] * 5 and seat(offer) == 0, f"{codes} {seat(offer)}")
+        s1, _, _ = act(seeker, "platz-vergeben")
+        s2, _, _ = act(seeker, "platz-frei")
+        check("Plätze: Aktionen gelten nur für Angebote", s1 in (302, 400) and s2 in (302, 400) and seat(seeker) == 0, f"{s1} {s2}")
+
+        # --- schließen / öffnen ---
+        kai = insert_ride(e, kind="seek", name="Kai", origin="Konstanz", direction="both", seats=1, email="kai@example.com")
+        _, _, kb = req(c, f"/mitfahrt/mein/{kai}")
+        check("Treffer enthält das Angebot vor dem Schließen", "Seat Sam" in kb)
+        s, h, _ = act(offer, "schliessen")
+        _, _, kb = req(c, f"/mitfahrt/mein/{kai}")
+        _, _, ov = req(c2, "/mitfahrt")
+        check("Schließen: Eintrag fehlt in Übersicht und Treffern",
+              s == 302 and db_scalar(e, "SELECT active FROM ride WHERE token=?", offer) == 0
+              and "Seat Sam" not in kb and "Seat Sam" not in ov)
+        _, _, mb = req(c, f"/mitfahrt/mein/{offer}")
+        check("Geschlossen: nur 'Wieder öffnen' und 'Löschen'",
+              "Wieder öffnen" in mb and "Löschen" in mb and "Platz vergeben" not in mb and "Eintrag schließen" not in mb)
+        act(offer, "oeffnen")
+        _, _, ov = req(c2, "/mitfahrt")
+        check("Wieder öffnen: Eintrag ist sichtbar", "Seat Sam" in ov)
+        _, _, mb = req(c, f"/mitfahrt/mein/{offer}")
+        check("Offener Eintrag zeigt Platz- und Schließen-Aktionen",
+              "Platz vergeben" in mb and "Platz wieder frei" in mb and "Eintrag schließen" in mb)
+
+        # --- löschen ---
+        s, h, _ = act(offer, "loeschen")
+        s404, _, _ = req(c, f"/mitfahrt/mein/{offer}")
+        check("Löschen: Zeile weg, Redirect auf /mitfahrt, alter Link 404",
+              s == 302 and h["Location"].rstrip("/").endswith("/mitfahrt")
+              and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE token=?", offer) == 0 and s404 == 404, f"{s} {s404}")
+
+        # --- ungültige Kennungen, CSRF, Aktionen ---
+        for path in ("/mitfahrt/mein/xyz", "/mitfahrt/mein/" + "a" * 32, "/mitfahrt/mein/" + "a" * 33,
+                     "/mitfahrt/mein/..%2Fadmin", "/mitfahrt/mein/" + seeker.upper()):
+            s, _, _ = req(c, path)
+            check(f"Ungültige Kennung -> 404 ({path[:36]})", s == 404, str(s))
+        s, _, _ = req(c, f"/mitfahrt/mein/{seeker}/schliessen", {})
+        check("POST ohne CSRF-Token -> 403", s == 403, str(s))
+        s, _, _ = act(seeker, "hacken")
+        check("Unbekannte Aktion -> 404", s == 404, str(s))
+    finally:
+        e.stop()
+
+
 def phase_carpool_limit():
     print("\n=== Phase D: Mitfahrbörse (Rate-Limit) ===")
     e = Env("2099-12-31")
@@ -598,6 +699,7 @@ if __name__ == "__main__":
         phase_open()
         phase_closed()
         phase_carpool()
+        phase_carpool_manage()
         phase_carpool_limit()
     except SystemExit as ex:
         print(ex)

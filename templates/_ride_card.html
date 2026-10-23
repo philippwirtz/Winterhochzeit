@@ -1,0 +1,29 @@
+{% macro ride_card(r, match=false) %}
+{% set full = r.kind == 'offer' and r.seats_taken >= r.seats %}
+<article class="ride-card{% if full %} ride-card--full{% endif %}">
+    <header class="ride-card__head">
+        <strong>{{ r.name }}</strong>
+        {% if match %}<span class="ride-badge ride-badge--match">Match</span>{% endif %}
+        {% if r.token in own %}<span class="ride-badge ride-badge--own">Dein Eintrag</span>{% endif %}
+        {% if full %}<span class="ride-badge ride-badge--full">Voll</span>{% endif %}
+    </header>
+    <p class="ride-meta"><span>ab {{ r.origin }}</span><span>{{ DIRECTION_LABELS[r.direction] }}</span>{% if r.depart_time %}<span>{{ r.depart_time }}</span>{% endif %}</p>
+    <p class="ride-seats">
+        {% if r.kind == 'offer' %}{{ r.seats - r.seats_taken }} von {{ r.seats }} Plätzen frei
+        {% else %}{{ r.seats }} {{ 'Person' if r.seats == 1 else 'Personen' }}{% endif %}
+    </p>
+    {% if r.note %}<p class="ride-note">{{ r.note }}</p>{% endif %}
+    <details class="ride-contact">
+        <summary>Kontakt anzeigen</summary>
+        <div class="ride-actions">
+            {% for l in contact_links(r) %}
+            <a class="btn btn--small" href="{{ l.href }}" rel="noopener">{{ l.label }}</a>
+            {% endfor %}
+        </div>
+        <p class="ride-raw muted">
+            {% if r.phone %}<span>Tel.: {{ r.phone }}</span>{% endif %}
+            {% if r.email %}<span>E-Mail: {{ r.email }}</span>{% endif %}
+        </p>
+    </details>
+</article>
+{% endmacro %}
