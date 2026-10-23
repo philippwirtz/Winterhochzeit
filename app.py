@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import os
 import csv
 import hmac
+import html
 import io
 import re
 import time
@@ -9,9 +10,9 @@ from urllib.parse import urlparse
 from functools import wraps
 from dotenv import load_dotenv
 
+import click
 import smtplib
 from email.message import EmailMessage
-from markupsafe import escape
 
 import qrcode
 import qrcode.image.svg
@@ -143,10 +144,18 @@ def safe_csv_cell(v: str | None) -> str:
         return "'" + v
     return v
 
+def clean_text(value: str | None, max_len: int) -> str:
+    # Einzeilig, Whitespace normalisiert. Kein HTML-Escaping: das übernimmt Jinja beim Rendern.
+    return " ".join((value or "").split())[:max_len]
+
 EVENT_DT = parse_local_date(EVENT_DATETIME_STR)
 RSVP_DEADLINE = parse_local_date(RSVP_DEADLINE_STR).date()
 FRIDAY_START = parse_local_date(os.getenv("FRIDAY_START", "2026-12-04 17:00"))
 SATURDAY_START = parse_local_date(os.getenv("SATURDAY_START", "2026-12-05 10:30"))
+
+@app.context_processor
+def inject_template_globals():
+    return {"now": datetime.now, "rsvp_open": datetime.now().date() <= RSVP_DEADLINE}
 
 # ---------- Model ----------
 class RSVP(db.Model):
@@ -316,7 +325,6 @@ def index():
         event_location_address=EVENT_LOCATION_ADDRESS,
         timeleft=timeleft,
         rsvp_deadline=RSVP_DEADLINE,
-        rsvp_open=(datetime.now().date() <= RSVP_DEADLINE),
         friday_start=FRIDAY_START,
         saturday_start=SATURDAY_START,
     )
@@ -328,15 +336,15 @@ def privacy():
 @app.route("/rsvp", methods=["POST"])
 @limiter.limit("5/minute")
 def submit_rsvp():
-    name = escape((request.form.get("name") or "").strip())[:120]
-    email = escape((request.form.get("email") or "").strip())[:200]
+    name = clean_text(request.form.get("name"), 120)
+    email = clean_text(request.form.get("email"), 200)
     attendance = (request.form.get("attendance") or "").strip()
     guests_raw = (request.form.get("guests") or "1").strip()
-    notes = escape((request.form.get("notes") or "").strip())[:500]
-    song = escape((request.form.get("song") or "").strip())[:300]
+    notes = clean_text(request.form.get("notes"), 500)
+    song = clean_text(request.form.get("song"), 300)
     consent = request.form.get("consent") == "on"
     attendance_days = (request.form.get("attendance_days") or "").strip()
-    contribution = escape((request.form.get("contribution") or "").strip())[:300]
+    contribution = clean_text(request.form.get("contribution"), 300)
     meal_choice = (request.form.get("meal_choice") or "").strip()
 
     errors = []
@@ -554,13 +562,13 @@ def admin_rsvps_update():
     except ValueError:
         guests = r.guests
 
-    notes = escape((request.form.get("notes") or r.notes or "").strip())[:500]
+    notes = clean_text(request.form["notes"], 500) if "notes" in request.form else (r.notes or "")
 
     attendance_days = (request.form.get("attendance_days") or r.attendance_days or "").strip()
     if attendance_days not in ("fri", "sat", "both", ""):
         attendance_days = r.attendance_days
 
-    contribution = escape((request.form.get("contribution") or r.contribution or "").strip())[:300]
+    contribution = clean_text(request.form["contribution"], 300) if "contribution" in request.form else (r.contribution or "")
     meal_choice = (request.form.get("meal_choice") or r.meal_choice or "").strip()
     if meal_choice not in ("vegetarian", "meat", ""):
         meal_choice = r.meal_choice
@@ -758,6 +766,48 @@ def alter_db_add_meal():
             print("Spalte meal_choice hinzugefügt.")
         except Exception as e:
             print("Spalte meal_choice evtl. schon vorhanden oder Fehler:", e)
+
+@app.cli.command("unescape-db")
+@click.option("--dry-run", is_flag=True, help="Nur anzeigen, nichts ändern.")
+@click.option("--force", is_flag=True, help="Auch ausführen, wenn es schon einmal gelaufen ist.")
+def unescape_db(dry_run, force):
+    """Einmalig: HTML-Entities (&amp;, &#39; ...) in bestehenden Einträgen zurückwandeln.
+
+    Frühere Versionen haben Eingaben vor dem Speichern HTML-escaped; dadurch
+    erschienen Sonderzeichen doppelt kodiert. Zweimal ausführen würde ein
+    absichtlich eingegebenes "&amp;" verfälschen, daher die Marker-Datei.
+    """
+    db_path = db.engine.url.database
+    marker = f"{db_path}.unescaped_v1" if db_path else None
+    if marker and os.path.exists(marker) and not force:
+        print("Bereits ausgeführt (Marker vorhanden). Mit --force erneut ausführen.")
+        return
+
+    fields = ("name", "email", "notes", "song", "contribution")
+    changed_rows = 0
+    for r in RSVP.query.all():
+        touched = False
+        for f in fields:
+            old = getattr(r, f)
+            if old and "&" in old:
+                new = html.unescape(old)
+                if new != old:
+                    print(f"#{r.id} {f}: {old!r} -> {new!r}")
+                    if not dry_run:
+                        setattr(r, f, new)
+                    touched = True
+        changed_rows += touched
+
+    if dry_run:
+        db.session.rollback()
+        print(f"Dry-Run: {changed_rows} Einträge würden geändert.")
+        return
+
+    db.session.commit()
+    if marker:
+        with open(marker, "w", encoding="utf-8") as fh:
+            fh.write("done\n")
+    print(f"{changed_rows} Einträge bereinigt.")
 
 # ---------- Run ----------
 if __name__ == "__main__":

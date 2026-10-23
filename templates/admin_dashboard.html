@@ -437,8 +437,8 @@
               <form action="{{ url_for('admin_rsvps_delete') }}" method="post" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="id" value="{{ r.id }}">
-                <button class="btn btn--small btn--ghost" type="submit" 
-                        onclick="return confirm('{{ r.name }} wirklich löschen?')">🗑</button>
+                <button class="btn btn--small btn--ghost" type="submit"
+                        onclick='return confirm({{ (r.name ~ " wirklich löschen?")|tojson }})'>🗑</button>
               </form>
             </td>
           </tr>
