@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
 import os
 import csv
+import hmac
 import io
 import re
+import time
+from urllib.parse import urlparse
 from functools import wraps
 from dotenv import load_dotenv
 
@@ -22,7 +25,6 @@ from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_basicauth import BasicAuth
 from sqlalchemy.sql import func, or_, desc
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -73,15 +75,11 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(days=30),
 )
 
-# Admin BasicAuth
+# Admin-Login (Session-basiert)
 ADMIN_USER  = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS  = os.getenv("ADMIN_PASS", "changeme")
-if ADMIN_USER and ADMIN_PASS:
-    app.config["BASIC_AUTH_USERNAME"] = ADMIN_USER
-    app.config["BASIC_AUTH_PASSWORD"] = ADMIN_PASS
-    basic_auth = BasicAuth(app)
-else:
-    basic_auth = None
+ADMIN_REMEMBER_SECONDS = 30 * 24 * 3600
+ADMIN_SESSION_SECONDS = 8 * 3600
 
 # Security-Header / HTTPS / CSP
 csp = {
@@ -225,13 +223,30 @@ def send_rsvp_mail(entry: RSVP):
         app.logger.error(f"RSVP mail send failed: {e}")
 
 # ---------- Admin-Guard ----------
+def admin_logged_in() -> bool:
+    return int(session.get("admin_exp", 0)) > time.time()
+
+def safe_next(nxt: str) -> str:
+    nxt = (nxt or "").strip()
+    if nxt.startswith("/") and not nxt.startswith("//") and "\\" not in nxt:
+        return nxt
+    return url_for("admin_dashboard")
+
+def admin_back() -> str:
+    ref = request.referrer or ""
+    parts = urlparse(ref)
+    if parts.netloc == request.host and parts.path.startswith("/admin"):
+        return parts.path + (f"?{parts.query}" if parts.query else "")
+    return url_for("admin_rsvps")
+
 def admin_protected(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
-        if basic_auth is None:
+        if not ADMIN_USER or not ADMIN_PASS:
             abort(403)
-        if not basic_auth.authenticate():
-            return basic_auth.challenge()
+        if not admin_logged_in():
+            nxt = request.full_path.rstrip("?") if request.method == "GET" else url_for("admin_dashboard")
+            return redirect(url_for("admin_login", next=nxt))
         return view(*args, **kwargs)
     return wrapper
 
@@ -392,12 +407,45 @@ def thank_you():
 
 INVITED_TOTAL = int(os.getenv("INVITED_TOTAL", "0"))
 
+@app.route("/admin/login", methods=["GET", "POST"])
+@limiter.limit("10/minute", methods=["POST"])
+def admin_login():
+    error = None
+    username = ""
+    nxt = request.values.get("next", "")
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        user_ok = hmac.compare_digest(username.encode("utf-8"), ADMIN_USER.encode("utf-8"))
+        pass_ok = hmac.compare_digest(password.encode("utf-8"), ADMIN_PASS.encode("utf-8"))
+        if ADMIN_USER and ADMIN_PASS and user_ok and pass_ok:
+            remember = request.form.get("remember") == "1"
+            ttl = ADMIN_REMEMBER_SECONDS if remember else ADMIN_SESSION_SECONDS
+            session["admin_exp"] = int(time.time()) + ttl
+            return redirect(safe_next(nxt))
+        error = "Benutzername oder Passwort ist nicht korrekt."
+        return render_template(
+            "admin_login.html", event_title=EVENT_TITLE,
+            error=error, username=username, next_url=nxt,
+        ), 401
+
+    if admin_logged_in():
+        return redirect(safe_next(nxt))
+    return render_template("admin_login.html", event_title=EVENT_TITLE, error=None, username="", next_url=nxt)
+
+@app.post("/admin/logout")
+def admin_logout():
+    session.pop("admin_exp", None)
+    return redirect(url_for("admin_login"))
+
 @app.route("/admin")
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 @admin_protected
 def admin_dashboard():
     attendance = (request.args.get("attendance") or "").strip()
     days       = (request.args.get("days") or "").strip()
+    meal       = (request.args.get("meal") or "").strip()
     q          = (request.args.get("q") or "").strip()
     order      = (request.args.get("order") or "created_desc").strip()
     page       = max(int(request.args.get("page", 1)), 1)
@@ -413,11 +461,16 @@ def admin_dashboard():
     sat_count  = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.attendance_days=="sat").count()
     both_count = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.attendance_days=="both").count()
 
+    veg_count  = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.meal_choice=="vegetarian").count()
+    meat_count = db.session.query(RSVP).filter(RSVP.attendance=="yes", RSVP.meal_choice=="meat").count()
+
     query = RSVP.query
     if attendance in ("yes", "no"):
         query = query.filter(RSVP.attendance == attendance)
     if days in ("fri", "sat", "both"):
         query = query.filter(RSVP.attendance_days == days)
+    if meal in ("vegetarian", "meat"):
+        query = query.filter(RSVP.meal_choice == meal)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -447,13 +500,14 @@ def admin_dashboard():
         event_title=EVENT_TITLE,
         total=total, yes_count=yes_count, no_count=no_count, guests_yes=guests_yes,
         fri_count=fri_count, sat_count=sat_count, both_count=both_count,
+        veg_count=veg_count, meat_count=meat_count,
         rsvps=rsvps, total_filtered=total_filtered,
-        attendance=attendance, days=days, q=q, order=order,
+        attendance=attendance, days=days, meal=meal, q=q, order=order,
         page=page, pages=pages, per_page=per_page
     )
 
 @app.route("/admin/rsvps")
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 @admin_protected
 def admin_rsvps():
     attendance = (request.args.get("attendance") or "").strip()
@@ -480,7 +534,7 @@ def admin_rsvps():
                            event_title=EVENT_TITLE)
 
 @app.route("/admin/rsvps/update", methods=["POST"])
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 @admin_protected
 def admin_rsvps_update():
     rid = request.form.get("id")
@@ -524,10 +578,10 @@ def admin_rsvps_update():
     r.contribution = contribution
     r.meal_choice = meal_choice
     db.session.commit()
-    return redirect(url_for("admin_rsvps"))
+    return redirect(admin_back())
 
 @app.route("/admin/rsvps/delete", methods=["POST"])
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 @admin_protected
 def admin_rsvps_delete():
     rid = request.form.get("id")
@@ -539,7 +593,7 @@ def admin_rsvps_delete():
 
     db.session.delete(r)
     db.session.commit()
-    return redirect(url_for("admin_rsvps"))
+    return redirect(admin_back())
 
 @app.route("/admin/export.csv")
 @limiter.limit("5/minute")

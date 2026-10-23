@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="gate-wrap">
+  <div class="card gate-card">
+    
+    <!-- Ringe-Illustration (wie bei gate.html) -->
+    <div class="gate-illus">
+      <svg class="rings" viewBox="0 0 80 40" fill="none" stroke="currentColor" stroke-width="2">
+        <ellipse cx="28" cy="20" rx="18" ry="14"/>
+        <ellipse cx="52" cy="20" rx="18" ry="14"/>
+      </svg>
+    </div>
+    
+    <h1 class="gate-title">Admin-Login</h1>
+    <p class="gate-sub muted">Melde dich an, um das Dashboard zu sehen.</p>
+    
+    {% if error %}
+    <div class="alert" role="alert">{{ error }}</div>
+    {% endif %}
+    
+    <form method="post" action="{{ url_for('admin_login') }}" autocomplete="on">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next_url or request.args.get('next', '') }}">
+      
+      <div class="grid" style="grid-template-columns: 1fr; gap: 1rem;">
+        <label>
+          <span>Benutzername</span>
+          <input type="text" 
+                 name="username" 
+                 autocomplete="username" 
+                 required 
+                 autofocus
+                 value="{{ username or '' }}">
+        </label>
+        
+        <label>
+          <span>Passwort</span>
+          <div class="input-group">
+            <input type="password" 
+                   name="password" 
+                   id="password"
+                   class="code-input"
+                   autocomplete="current-password" 
+                   required>
+            <button type="button" class="btn-eye" aria-label="Passwort anzeigen" onclick="togglePassword()">
+              <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </label>
+        
+        <label class="consent">
+          <input type="checkbox" name="remember" value="1" checked>
+          <span>Angemeldet bleiben (30 Tage)</span>
+        </label>
+      </div>
+      
+      <div class="form-actions" style="margin-top: 1.5rem;">
+        <button type="submit" class="btn" style="width: 100%;">Anmelden</button>
+      </div>
+    </form>
+    
+    <p style="text-align: center; margin-top: 1.5rem;">
+      <a href="{{ url_for('index') }}" class="muted" style="font-size: 0.9rem;">← Zurück zur Startseite</a>
+    </p>
+    
+  </div>
+</div>
+
+<script>
+function togglePassword() {
+  const input = document.getElementById('password');
+  const icon = document.getElementById('eye-icon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    input.type = 'password';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+</script>
+{% endblock %}
