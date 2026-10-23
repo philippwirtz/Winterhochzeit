@@ -595,6 +595,9 @@ def admin_rsvps_delete():
     db.session.commit()
     return redirect(admin_back())
 
+DAY_LABELS = {"fri": "Freitag", "sat": "Samstag", "both": "Freitag & Samstag"}
+MEAL_LABELS = {"vegetarian": "Vegetarisch", "meat": "Mit Fleisch"}
+
 @app.route("/admin/export.csv")
 @limiter.limit("5/minute")
 @admin_protected
@@ -612,10 +615,10 @@ def export_csv():
             safe_csv_cell(r.name),
             safe_csv_cell(r.email),
             "Zusage" if r.attendance == "yes" else "Absage",
-            r.attendance_days or "",
+            DAY_LABELS.get(r.attendance_days, r.attendance_days or ""),
             r.guests or 1,
             safe_csv_cell(r.contribution or ""),
-            safe_csv_cell(r.meal_choice or ""),
+            MEAL_LABELS.get(r.meal_choice, r.meal_choice or ""),
             safe_csv_cell(r.notes or ""),
         ])
 
