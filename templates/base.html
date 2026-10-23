@@ -6,12 +6,12 @@
     <title>{{ event_title }} | Event-Website</title>
     <meta
       name="description"
-      content="Offizielle Event-Website: Infos, Ablauf, Anfahrt, Übernachtung & RSVP."
+      content="Offizielle Event-Website: Infos, Ablauf, Anfahrt, Übernachtung{% if rsvp_open %} & RSVP{% endif %}."
     />
     <meta property="og:title" content="{{ event_title }} | Event-Website" />
     <meta
       property="og:description"
-      content="Alle Infos - jetzt zusagen & Details checken."
+      content="{% if rsvp_open %}Alle Infos - jetzt zusagen & Details checken.{% else %}Alle Infos zur Feier: Ablauf, Anfahrt, Parken & Schlafmöglichkeiten.{% endif %}"
     />
     <meta property="og:type" content="website" />
     <meta
@@ -42,7 +42,9 @@
       <li><a href="{{ url_for('index') }}#uebernachtung">Schlafmöglichkeiten</a></li>
       <li><a href="{{ url_for('index') }}#faq">FAQ</a></li>
       <li><a href="{{ url_for('fotos') }}">Fotos</a></li>
+      {% if rsvp_open %}
       <li><a href="{{ url_for('index') }}#rsvp" class="btn btn--small">RSVP</a></li>
+      {% endif %}
     </ul>
   </nav>
 </header>
