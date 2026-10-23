@@ -1063,3 +1063,111 @@ legend {
     font-size: 0.9em;
   }
 }
+
+/* ----------------------------------
+   Mitfahrbörse
+   ---------------------------------- */
+.ride-columns {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) {
+  .ride-columns { grid-template-columns: 1fr; }
+}
+.ride-column h3 { margin: 0 0 .75rem; }
+
+.ride-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: .9rem;
+  padding: 1rem;
+}
+.ride-card--full { opacity: .7; }
+.ride-card__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.ride-meta, .ride-seats, .ride-note { margin: .35rem 0 0; }
+.ride-seats { color: var(--muted); }
+.ride-meta span + span::before {
+  background: currentColor;
+  border-radius: 50%;
+  content: "";
+  display: inline-block;
+  height: 4px;
+  margin: 0 .6rem;
+  vertical-align: middle;
+  width: 4px;
+}
+
+.ride-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-block;
+  font-size: .75rem;
+  padding: .1rem .6rem;
+}
+.ride-badge--own   { background: #e8f3ff; border-color: #b8d4f0; }
+.ride-badge--full  { background: #fee2e2; border-color: #f3b4b4; color: #7a2b2b; }
+.ride-badge--match { background: #dcfce7; border-color: #a9dfbd; color: #166534; }
+
+.ride-contact { margin-top: .75rem; }
+.ride-contact summary { cursor: pointer; }
+.ride-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .6rem 0 .4rem;
+}
+.ride-actions .btn,
+.ride-manage .btn {
+  font-size: .85rem;
+  line-height: 1.2;
+  padding: .5rem 1rem;
+}
+.ride-raw { font-size: .85rem; margin: .25rem 0 0; overflow-wrap: anywhere; }
+.ride-raw span { display: block; }
+
+.ride-roles {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+@media (max-width: 520px) {
+  .ride-roles { grid-template-columns: 1fr; }
+}
+.ride-role { cursor: pointer; display: block; position: relative; }
+.ride-role input { opacity: 0; pointer-events: none; position: absolute; }
+.ride-role__body {
+  align-items: center;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  gap: .6rem;
+  padding: 1rem;
+}
+.ride-role input:checked + .ride-role__body {
+  background: var(--bg-soft);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+.ride-role input:focus-visible + .ride-role__body {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+.ride-role__emoji { font-size: 1.6rem; }
+
+.ride-honeypot {
+  height: 1px;
+  left: -9999px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}

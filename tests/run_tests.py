@@ -13,6 +13,7 @@ import csv
 import io
 import os
 import re
+import secrets
 import sqlite3
 import subprocess
 import sys
@@ -98,7 +99,7 @@ def csv_rows(client):
 
 
 class Env:
-    def __init__(self, deadline):
+    def __init__(self, deadline, extra=None):
         self.tmp = tempfile.TemporaryDirectory(prefix="wh_test_")
         self.db = Path(self.tmp.name) / "test.db"
         self.proc = None
@@ -110,6 +111,7 @@ class Env:
             "DATABASE_URL": f"sqlite:///{self.db.as_posix()}", "PORT": str(PORT),
             "SMTP_HOST": "", "MAIL_TO": "", "PHOTOS_URL": "",
         })
+        self.env.update(extra or {})
 
     def seed(self):
         out = subprocess.run([sys.executable, "-c", SEED], cwd=ROOT, env=self.env,
@@ -149,6 +151,131 @@ class Env:
         out = subprocess.run([sys.executable, "-m", "flask", "--app", "app.py", *args], cwd=ROOT,
                              env=self.env, capture_output=True, text=True, timeout=60)
         return out.stdout + out.stderr
+
+
+def insert_ride(env, **fields):
+    row = dict(token=secrets.token_hex(16), kind="offer", name="Test", origin="Villingen", direction="both",
+               depart_time="", seats=3, seats_taken=0, phone="", email="t@example.com", note="",
+               consent=1, active=1)
+    row.update(fields)
+    con = sqlite3.connect(env.db)
+    con.execute(f"INSERT INTO ride ({','.join(row)}) VALUES ({','.join('?' * len(row))})", list(row.values()))
+    con.commit()
+    con.close()
+    return row["token"]
+
+
+def db_scalar(env, sql, *args):
+    con = sqlite3.connect(env.db)
+    try:
+        return con.execute(sql, args).fetchone()[0]
+    finally:
+        con.close()
+
+
+CONSENT_TEXT = ("Ich bin einverstanden, dass meine Angaben inklusive Kontaktdaten für andere Gäste dieser "
+                "Seite sichtbar sind. Ich kann den Eintrag jederzeit löschen.")
+RIDE_PATH = re.compile(r"/mitfahrt/mein/[0-9a-f]{32}$")
+
+
+def ride_poster(client, tok):
+    def post(**over):
+        data = dict(csrf_token=tok, kind="offer", name="Anna", origin="78050 Villingen", direction="both",
+                    depart_time="", seats="3", phone="", email="anna@example.com", note="", consent="on",
+                    website="")
+        data.update(over)
+        return req(client, "/mitfahrt", data)
+    return post
+
+
+def phase_carpool():
+    print("\n=== Phase C: Mitfahrbörse (Übersicht und Anlegen) ===")
+    e = Env("2099-12-31", {"CARPOOL_RATE_LIMIT": "500/hour"})
+    e.seed()
+    e.start()
+    try:
+        c = new_client()
+        s, h, _ = req(c, "/mitfahrt")
+        check("Mitfahrt ohne Gate -> Gate", s == 302 and "/gate" in h["Location"], f"{s}")
+        pass_gate(c)
+        s, _, b = req(c, "/mitfahrt")
+        check("Übersicht erreichbar", s == 200 and "Krähenlochhütte" in b and "Fahrer:in" in b, str(s))
+        check("Leerzustand", "Noch keine Einträge" in b)
+        check("Formular: Einwilligungstext, Hinweis und Honeypot",
+              CONSENT_TEXT in b and "Vorname reicht" in b and 'name="website"' in b)
+        _, _, b2 = req(c, "/mitfahrt?rolle=suche")
+        check("?rolle=suche wählt die Rolle vor", re.search(r'value="seek"[^>]*checked', b2) is not None)
+        post = ride_poster(c, csrf(b))
+
+        s, h, _ = post()
+        check("Anlegen per E-Mail -> Redirect auf Verwaltungslink", s == 302 and RIDE_PATH.search(h.get("Location", "")), f"{s} {h.get('Location')}")
+        s, h, _ = post(kind="seek", name="Ben", origin="Freiburg", seats="1", phone="+49 (0) 176 1234567", email="")
+        check("Anlegen per Telefon (Suche) -> 302", s == 302 and RIDE_PATH.search(h.get("Location", "")), f"{s}")
+        _, _, b = req(c, "/mitfahrt")
+        check("Übersicht zeigt neue Einträge", "Anna" in b and "Villingen" in b and "Ben" in b and "Freiburg" in b)
+        check("Kontakt-Bereich mit Buttons und WhatsApp-Link",
+              "<details" in b and "WhatsApp" in b and "Anrufen" in b and "E-Mail" in b and "https://wa.me/491761234567" in b)
+        check("Telefonnummer steht im Klartext", "+49 (0) 176 1234567" in b)
+
+        before = db_scalar(e, "SELECT COUNT(*) FROM ride")
+        for label, over, part in [
+            ("ohne Einwilligung", dict(consent=""), "Einwilligung"),
+            ("ohne Kontakt", dict(email="", phone=""), "Telefon oder E-Mail"),
+            ("ungültige E-Mail", dict(email="kaputt"), "gültige E-Mail"),
+            ("ungültiges Telefon", dict(phone="0176 ABC"), "gültige Telefonnummer"),
+            ("leerer Name", dict(name=" "), "Namen"),
+            ("Plätze 9", dict(seats="9"), "1 bis 8"),
+        ]:
+            s, _, eb = post(**over)
+            kept = 'value="Anna"' in eb or over.get("name") == " "
+            check(f"Fehler {label}: 400, Meldung, Eingaben erhalten", s == 400 and part in eb and kept, f"{s}")
+        check("Fehlerhafte Eingaben legen nichts an", db_scalar(e, "SELECT COUNT(*) FROM ride") == before)
+
+        s, h, _ = post(name="Hanni", website="http://spam.example")
+        check("Honeypot: Redirect auf /mitfahrt, nichts gespeichert",
+              s == 302 and h["Location"].rstrip("/").endswith("/mitfahrt") and db_scalar(e, "SELECT COUNT(*) FROM ride") == before)
+
+        s1, h1, _ = post(name="Dora", email="dora@example.com")
+        s2, h2, _ = post(name="Dora", email="dora@example.com")
+        check("Doppeltes Absenden: gleicher Verwaltungslink, eine Zeile",
+              s1 == s2 == 302 and h1["Location"] == h2["Location"]
+              and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Dora'") == 1)
+
+        s, _, _ = post(name="O'Brien & <b>x</b> 🚗", email="ob@example.com")
+        _, _, b = req(c, "/mitfahrt")
+        check("Sonderzeichen: einfach escaped, kein HTML",
+              s == 302 and "O&#39;Brien &amp; &lt;b&gt;x&lt;/b&gt; 🚗" in b and "<b>x</b>" not in b)
+        s, _, _ = post(name="n" * 200, email="long@example.com")
+        check("Überlanger Name wird auf 60 Zeichen gekürzt",
+              s == 302 and db_scalar(e, "SELECT LENGTH(name) FROM ride WHERE email='long@example.com'") == 60)
+
+        insert_ride(e, name="Voll Vera", seats=2, seats_taken=2, email="vera@example.com")
+        insert_ride(e, name="Inaktiv Ida", active=0, email="ida@example.com")
+        _, _, b = req(c, "/mitfahrt")
+        check("Volles Angebot zeigt Badge 'Voll'", "Voll Vera" in b and re.search(r">\s*Voll\s*<", b) is not None)
+        check("Inaktiver Eintrag erscheint nicht", "Inaktiv Ida" not in b)
+    finally:
+        e.stop()
+
+
+def phase_carpool_limit():
+    print("\n=== Phase D: Mitfahrbörse (Rate-Limit) ===")
+    e = Env("2099-12-31")
+    e.seed()
+    e.start()
+    try:
+        c = new_client()
+        pass_gate(c)
+        _, _, b = req(c, "/mitfahrt")
+        post = ride_poster(c, csrf(b))
+        bad = [post(name=f"Fehler{i}", consent="")[0] for i in range(3)]
+        check("Fehlerhafte Eingaben (400) verbrauchen kein Kontingent", bad == [400, 400, 400], str(bad))
+        ok = [post(name=f"Gast{i}", email=f"gast{i}@example.com")[0] for i in range(6)]
+        check("6 gültige Einträge pro Stunde sind erlaubt", ok == [302] * 6, str(ok))
+        s, _, _ = post(name="Gast7", email="gast7@example.com")
+        check("7. gültiger Eintrag -> 429", s == 429, str(s))
+    finally:
+        e.stop()
 
 
 def phase_open():
@@ -470,6 +597,8 @@ if __name__ == "__main__":
         phase_unit()
         phase_open()
         phase_closed()
+        phase_carpool()
+        phase_carpool_limit()
     except SystemExit as ex:
         print(ex)
         sys.exit(2)

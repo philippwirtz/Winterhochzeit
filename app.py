@@ -5,6 +5,7 @@ import hmac
 import html
 import io
 import re
+import secrets
 import time
 from urllib.parse import urlparse
 from functools import wraps
@@ -16,6 +17,8 @@ from email.message import EmailMessage
 
 import qrcode
 import qrcode.image.svg
+
+import carpool
 
 from flask import (
     Flask, render_template, request, redirect, url_for, make_response,
@@ -42,6 +45,8 @@ EVENT_LOCATION_NAME = os.getenv("EVENT_LOCATION_NAME", "Kurgarten Bad Dürrheim"
 EVENT_LOCATION_ADDRESS = os.getenv("EVENT_LOCATION_ADDRESS", "Luisenstraße 16, 78073 Bad Dürrheim")
 RSVP_DEADLINE_STR = os.getenv("RSVP_DEADLINE", "2026-04-01")
 PHOTOS_URL = os.getenv("PHOTOS_URL", "").strip()
+CARPOOL_ENABLED = os.getenv("CARPOOL_ENABLED", "1") == "1"
+CARPOOL_RATE_LIMIT = os.getenv("CARPOOL_RATE_LIMIT", "6/hour")
 
 IS_DEV = os.getenv("FLASK_DEBUG", "0") == "1" or os.getenv("ENV", "").lower() == "development"
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "0" if IS_DEV else "1") == "1"
@@ -155,7 +160,14 @@ SATURDAY_START = parse_local_date(os.getenv("SATURDAY_START", "2026-12-05 10:30"
 
 @app.context_processor
 def inject_template_globals():
-    return {"now": datetime.now, "rsvp_open": datetime.now().date() <= RSVP_DEADLINE}
+    return {"now": datetime.now, "rsvp_open": datetime.now().date() <= RSVP_DEADLINE,
+            "carpool_enabled": CARPOOL_ENABLED}
+
+app.jinja_env.globals.update(
+    contact_links=carpool.contact_links,
+    KIND_LABELS=carpool.KIND_LABELS,
+    DIRECTION_LABELS=carpool.DIRECTION_LABELS,
+)
 
 # ---------- Model ----------
 class RSVP(db.Model):
@@ -171,6 +183,23 @@ class RSVP(db.Model):
     attendance_days = db.Column(db.String(10), nullable=False, default="sat")  # "fri" | "sat" | "both"
     contribution = db.Column(db.String(300))  # Salat/Kuchen etc.
     meal_choice = db.Column(db.String(20))  # "vegetarian" | "meat"
+
+class Ride(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(32), unique=True, index=True, nullable=False)
+    kind = db.Column(db.String(5), nullable=False)          # "offer" | "seek"
+    name = db.Column(db.String(60), nullable=False)
+    origin = db.Column(db.String(80), nullable=False)
+    direction = db.Column(db.String(4), nullable=False)     # "there" | "back" | "both"
+    depart_time = db.Column(db.String(30), nullable=False, default="")
+    seats = db.Column(db.Integer, nullable=False)           # offer: freie Plätze, seek: Personen
+    seats_taken = db.Column(db.Integer, nullable=False, default=0)
+    phone = db.Column(db.String(40), nullable=False, default="")
+    email = db.Column(db.String(120), nullable=False, default="")
+    note = db.Column(db.String(200), nullable=False, default="")
+    consent = db.Column(db.Boolean, nullable=False, default=False)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
 # ---------- E-Mail ----------
 def send_rsvp_mail(entry: RSVP):
@@ -659,6 +688,43 @@ def fotos_qr():
     resp.headers["Content-Type"] = "image/svg+xml"
     resp.headers["Cache-Control"] = "public, max-age=3600"
     return resp
+
+# ---------- Mitfahrbörse ----------
+def own_tokens() -> list[str]:
+    return list(session.get("ride_tokens", []))
+
+def remember_token(token: str) -> None:
+    session["ride_tokens"] = ([t for t in own_tokens() if t != token] + [token])[-20:]
+
+@app.route("/mitfahrt", methods=["GET", "POST"], endpoint="carpool")
+@limiter.limit(lambda: CARPOOL_RATE_LIMIT, methods=["POST"], deduct_when=lambda r: r.status_code < 400)
+def carpool_page():
+    if not CARPOOL_ENABLED:
+        abort(404)
+    errors, form, status = [], {}, 200
+    if request.method == "POST":
+        if request.form.get("website"):  # Honeypot: Bots füllen das versteckte Feld aus
+            return redirect(url_for("carpool"))
+        cleaned, errors = carpool.validate_ride_input(request.form, valid_email)
+        if not errors:
+            existing = Ride.query.filter_by(
+                active=True, kind=cleaned["kind"], name=cleaned["name"], origin=cleaned["origin"],
+                phone=cleaned["phone"], email=cleaned["email"]).first()
+            if existing is None:
+                existing = Ride(token=secrets.token_hex(16), consent=True, **cleaned)
+                db.session.add(existing)
+                db.session.commit()
+            remember_token(existing.token)
+            return redirect(f"/mitfahrt/mein/{existing.token}")
+        form, status = request.form, 400
+
+    rides = Ride.query.filter_by(active=True).order_by(Ride.created_at.desc(), Ride.id.desc()).all()
+    role = form.get("kind") or {"fahre": "offer", "suche": "seek"}.get(request.args.get("rolle", ""), "")
+    return render_template(
+        "carpool.html", event_title=EVENT_TITLE, friday_start=FRIDAY_START, errors=errors, form=form, role=role,
+        offers=[r for r in rides if r.kind == "offer"], seeks=[r for r in rides if r.kind == "seek"],
+        own=set(own_tokens()),
+    ), status
 
 @app.route("/event.ics")
 def event_ics():

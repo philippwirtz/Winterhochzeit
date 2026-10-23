@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% macro ride_card(r) %}
+{% set full = r.kind == 'offer' and r.seats_taken >= r.seats %}
+<article class="ride-card{% if full %} ride-card--full{% endif %}">
+    <header class="ride-card__head">
+        <strong>{{ r.name }}</strong>
+        {% if r.token in own %}<span class="ride-badge ride-badge--own">Dein Eintrag</span>{% endif %}
+        {% if full %}<span class="ride-badge ride-badge--full">Voll</span>{% endif %}
+    </header>
+    <p class="ride-meta"><span>ab {{ r.origin }}</span><span>{{ DIRECTION_LABELS[r.direction] }}</span>{% if r.depart_time %}<span>{{ r.depart_time }}</span>{% endif %}</p>
+    <p class="ride-seats">
+        {% if r.kind == 'offer' %}{{ r.seats - r.seats_taken }} von {{ r.seats }} Plätzen frei
+        {% else %}{{ r.seats }} {{ 'Person' if r.seats == 1 else 'Personen' }}{% endif %}
+    </p>
+    {% if r.note %}<p class="ride-note">{{ r.note }}</p>{% endif %}
+    <details class="ride-contact">
+        <summary>Kontakt anzeigen</summary>
+        <div class="ride-actions">
+            {% for l in contact_links(r) %}
+            <a class="btn btn--small" href="{{ l.href }}" rel="noopener">{{ l.label }}</a>
+            {% endfor %}
+        </div>
+        <p class="ride-raw muted">
+            {% if r.phone %}<span>Tel.: {{ r.phone }}</span>{% endif %}
+            {% if r.email %}<span>E-Mail: {{ r.email }}</span>{% endif %}
+        </p>
+    </details>
+</article>
+{% endmacro %}
+
+{% block content %}
+<section id="mitfahrt" class="section">
+    <div class="container">
+        <h2 class="section-title">Mitfahrbörse</h2>
+        <p class="section-subtitle muted">
+            Freitag, {{ friday_start.strftime('%d.%m.') }}, ab {{ friday_start.strftime('%H') }} Uhr, Krähenlochhütte in Gutmadingen.
+            Fahrt anbieten oder Mitfahrt suchen und direkt Kontakt aufnehmen.
+        </p>
+
+        <div class="ride-columns">
+            <div class="ride-column">
+                <h3>🚗 Fahrer:innen</h3>
+                {% for r in offers %}{{ ride_card(r) }}{% else %}
+                <p class="muted">Noch keine Einträge.</p>
+                {% endfor %}
+            </div>
+            <div class="ride-column">
+                <h3>🙋 Mitfahrer:innen</h3>
+                {% for r in seeks %}{{ ride_card(r) }}{% else %}
+                <p class="muted">Noch keine Einträge.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="eintragen" class="section section--light">
+    <div class="container">
+        <h2>Eintrag erstellen</h2>
+
+        {% if errors %}
+        <div class="alert" role="alert">
+            <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('carpool') }}" class="ride-form" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="ride-roles" role="radiogroup" aria-label="Rolle">
+                <label class="ride-role">
+                    <input type="radio" name="kind" value="offer" {% if role == 'offer' %}checked{% endif %} required>
+                    <span class="ride-role__body"><span class="ride-role__emoji">🚗</span> Ich fahre</span>
+                </label>
+                <label class="ride-role">
+                    <input type="radio" name="kind" value="seek" {% if role == 'seek' %}checked{% endif %} required>
+                    <span class="ride-role__body"><span class="ride-role__emoji">🙋</span> Ich suche eine Mitfahrt</span>
+                </label>
+            </div>
+
+            <div class="grid">
+                <label>
+                    <span>Name (Vorname reicht) *</span>
+                    <input type="text" name="name" maxlength="60" value="{{ form.get('name', '') }}" required>
+                </label>
+                <label>
+                    <span>Startort oder PLZ *</span>
+                    <input type="text" name="origin" maxlength="80" placeholder="z. B. 78050 Villingen" value="{{ form.get('origin', '') }}" required>
+                </label>
+                <label>
+                    <span>Wann?</span>
+                    <select name="direction">
+                        {% for key, label in DIRECTION_LABELS.items() %}
+                        <option value="{{ key }}" {% if (form.get('direction') or 'both') == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>Abfahrtszeit (optional)</span>
+                    <input type="text" name="depart_time" maxlength="30" placeholder="z. B. ca. 16:00" value="{{ form.get('depart_time', '') }}">
+                </label>
+                <label>
+                    <span id="seats-label">Freie Plätze (1–8) / Personen (1–6) *</span>
+                    <input type="number" name="seats" min="1" max="8" value="{{ form.get('seats', '1') }}" required>
+                </label>
+                <label>
+                    <span>Telefon / WhatsApp</span>
+                    <input type="tel" name="phone" maxlength="40" autocomplete="tel" value="{{ form.get('phone', '') }}">
+                </label>
+                <label>
+                    <span>E-Mail</span>
+                    <input type="email" name="email" maxlength="120" autocomplete="email" value="{{ form.get('email', '') }}">
+                </label>
+                <label>
+                    <span>Notiz (optional)</span>
+                    <input type="text" name="note" maxlength="200" placeholder="z. B. Umweg ist okay" value="{{ form.get('note', '') }}">
+                </label>
+            </div>
+            <p class="muted">Telefon oder E-Mail ist nötig, damit man dich erreichen kann.</p>
+
+            <div class="ride-honeypot" aria-hidden="true">
+                <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
+
+            <label class="consent">
+                <input type="checkbox" name="consent" required>
+                <span>Ich bin einverstanden, dass meine Angaben inklusive Kontaktdaten für andere Gäste dieser Seite sichtbar sind. Ich kann den Eintrag jederzeit löschen.
+                    <a href="{{ url_for('privacy') }}">Mehr erfahren</a>.</span>
+            </label>
+
+            <div class="form-actions">
+                <button class="btn" type="submit">Eintragen</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+(function () {
+  var radios = document.querySelectorAll('input[name="kind"]');
+  var label = document.getElementById('seats-label');
+  var seats = document.querySelector('input[name="seats"]');
+  function update() {
+    var sel = document.querySelector('input[name="kind"]:checked');
+    if (!label || !sel) return;
+    var seek = sel.value === 'seek';
+    label.textContent = (seek ? 'Personen (1–6)' : 'Freie Plätze (1–8)') + ' *';
+    if (seats) seats.max = seek ? 6 : 8;
+  }
+  radios.forEach(function (r) { r.addEventListener('change', update); });
+  update();
+})();
+</script>
+{% endblock %}
