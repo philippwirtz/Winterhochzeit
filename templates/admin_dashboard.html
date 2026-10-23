@@ -55,25 +55,24 @@
   
   /* Verteilungs-Chart */
   .distribution {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
     margin-top: 0.75rem;
   }
-  
+
   .distribution__row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    display: contents;
   }
-  
+
   .distribution__label {
-    width: 70px;
     font-size: 0.875rem;
+    white-space: nowrap;
   }
-  
+
   .distribution__bar {
-    flex: 1;
+    min-width: 0;
     background: var(--border);
     border-radius: 4px;
     height: 20px;
@@ -124,6 +123,16 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
+    padding-top: 0.25rem;
+  }
+
+  .filter-actions .btn {
+    padding: 0.6rem 1.25rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: inherit;
+    line-height: 1.2;
   }
   
   /* Tabelle */
@@ -184,6 +193,12 @@
     
     .stat-card__value {
       font-size: 1.5rem;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -330,7 +345,7 @@
           </select>
         </label>
 
-        <label style="grid-column: span 2">
+        <label style="grid-column: 1 / -1">
           <span>Suche</span>
           <input type="text" name="q" value="{{ q or '' }}" placeholder="Name, E-Mail, Notizen …">
         </label>
