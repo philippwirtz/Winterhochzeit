@@ -1,6 +1,6 @@
 """Reine Logik der Mitfahrbörse: kein Flask, keine Datenbank.
 
-Ride-Objekte werden nur über Attribute gelesen (id, kind, name, origin, direction,
+Ride-Objekte werden nur über Attribute gelesen (id, kind, name, origin, day, direction,
 seats, seats_taken, phone, email, active, created_at), damit die Funktionen ohne
 Datenbank testbar sind.
 """
@@ -8,7 +8,8 @@ import re
 from collections.abc import Callable, Iterable, Mapping
 from urllib.parse import quote
 
-DEST = "Krähenlochhütte"
+DAY_LABELS = {"fri": "Freitag", "sat": "Samstag"}
+DAY_DEST = {"fri": "Krähenlochhütte", "sat": "Kurgarten Bad Dürrheim"}
 KIND_LABELS = {"offer": "Fahrer:in", "seek": "Mitfahrer:in"}
 DIRECTION_LABELS = {"there": "Hinfahrt", "back": "Rückfahrt", "both": "Hin und zurück"}
 SEATS_MAX = {"offer": 8, "seek": 6}
@@ -58,7 +59,7 @@ def find_matches(ride, candidates: Iterable) -> tuple[list, list]:
     """(matches, others): passende Einträge der Gegenrolle, Score > 0 bzw. = 0."""
     scored = []
     for c in candidates:
-        if c.id == ride.id or not c.active or c.kind == ride.kind:
+        if c.id == ride.id or not c.active or c.kind == ride.kind or c.day != ride.day:
             continue
         if not directions_overlap(ride.direction, c.direction):
             continue
@@ -70,11 +71,16 @@ def find_matches(ride, candidates: Iterable) -> tuple[list, list]:
     return [c for s, c in scored if s > 0], [c for s, c in scored if s == 0]
 
 
+def day_trip(ride) -> str:
+    """Tag und Ziel eines Eintrags, z. B. 'Samstag (Kurgarten Bad Dürrheim)'."""
+    return f"{DAY_LABELS[ride.day]} ({DAY_DEST[ride.day]})"
+
+
 def message_text(ride) -> str:
     if ride.kind == "offer":
-        return (f"Hallo {ride.name}, ich habe dein Fahrtangebot für Freitag ({DEST}) gesehen. "
+        return (f"Hallo {ride.name}, ich habe dein Fahrtangebot für {day_trip(ride)} gesehen. "
                 "Hast du noch einen Platz für mich?")
-    return (f"Hallo {ride.name}, ich habe deine Mitfahr-Anfrage für Freitag ({DEST}) gesehen. "
+    return (f"Hallo {ride.name}, ich habe deine Mitfahr-Anfrage für {day_trip(ride)} gesehen. "
             f"Ich kann dich ab {ride.origin} mitnehmen.")
 
 
@@ -86,7 +92,7 @@ def contact_links(ride) -> list[dict[str, str]]:
         links.append({"kind": "whatsapp", "label": "WhatsApp", "href": f"https://wa.me/{digits}?text={text}"})
         links.append({"kind": "tel", "label": "Anrufen", "href": f"tel:+{digits}"})
     if ride.email:
-        subject = quote(f"Fahrgemeinschaft Freitag ({DEST})", safe="")
+        subject = quote(f"Fahrgemeinschaft {day_trip(ride)}", safe="")
         links.append({"kind": "mail", "label": "E-Mail",
                       "href": f"mailto:{quote(ride.email, safe='@+')}?subject={subject}&body={text}"})
     return links
@@ -100,6 +106,7 @@ def validate_ride_input(form: Mapping[str, str], valid_email: Callable[[str], bo
         "kind": get("kind").strip(),
         "name": _clean(get("name"), 60),
         "origin": _clean(get("origin"), 80),
+        "day": get("day").strip(),
         "direction": get("direction").strip(),
         "depart_time": _clean(get("depart_time"), 30),
         "seats": 0,
@@ -115,6 +122,8 @@ def validate_ride_input(form: Mapping[str, str], valid_email: Callable[[str], bo
         errors.append("Bitte gib deinen Namen an.")
     if not cleaned["origin"]:
         errors.append("Bitte gib deinen Startort an.")
+    if cleaned["day"] not in DAY_LABELS:
+        errors.append("Bitte wähle, ob es um Freitag oder Samstag geht.")
     if cleaned["direction"] not in DIRECTION_LABELS:
         errors.append("Bitte wähle Hinfahrt, Rückfahrt oder beides.")
 

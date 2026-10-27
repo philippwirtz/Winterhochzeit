@@ -1084,7 +1084,9 @@ legend {
 @media (max-width: 720px) {
   .ride-columns { grid-template-columns: 1fr; }
 }
-.ride-column h3 { margin: 0 0 .75rem; }
+.ride-day { margin: 1.75rem 0 .75rem; }
+.ride-day:first-of-type { margin-top: 1rem; }
+.ride-column h4 { margin: 0 0 .75rem; }
 
 .ride-card {
   background: var(--card);

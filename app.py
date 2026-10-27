@@ -30,7 +30,7 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy.sql import func, or_, desc
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import mimetypes
@@ -167,6 +167,8 @@ app.jinja_env.globals.update(
     contact_links=carpool.contact_links,
     KIND_LABELS=carpool.KIND_LABELS,
     DIRECTION_LABELS=carpool.DIRECTION_LABELS,
+    DAY_LABELS=carpool.DAY_LABELS,
+    DAY_DEST=carpool.DAY_DEST,
 )
 
 # ---------- Model ----------
@@ -190,6 +192,7 @@ class Ride(db.Model):
     kind = db.Column(db.String(5), nullable=False)          # "offer" | "seek"
     name = db.Column(db.String(60), nullable=False)
     origin = db.Column(db.String(80), nullable=False)
+    day = db.Column(db.String(3), nullable=False, default="fri", server_default="fri")  # "fri" | "sat"
     direction = db.Column(db.String(4), nullable=False)     # "there" | "back" | "both"
     depart_time = db.Column(db.String(30), nullable=False, default="")
     seats = db.Column(db.Integer, nullable=False)           # offer: freie Plätze, seek: Personen
@@ -720,9 +723,16 @@ def carpool_page():
 
     rides = Ride.query.filter_by(active=True).order_by(Ride.created_at.desc(), Ride.id.desc()).all()
     role = form.get("kind") or {"fahre": "offer", "suche": "seek"}.get(request.args.get("rolle", ""), "")
+    day = form.get("day") or {"freitag": "fri", "samstag": "sat"}.get(request.args.get("tag", ""), "fri")
+    starts = {"fri": FRIDAY_START, "sat": SATURDAY_START}
+    days = [
+        {"key": key, "start": starts[key],
+         "offers": [r for r in rides if r.day == key and r.kind == "offer"],
+         "seeks": [r for r in rides if r.day == key and r.kind == "seek"]}
+        for key in carpool.DAY_LABELS
+    ]
     return render_template(
-        "carpool.html", event_title=EVENT_TITLE, friday_start=FRIDAY_START, errors=errors, form=form, role=role,
-        offers=[r for r in rides if r.kind == "offer"], seeks=[r for r in rides if r.kind == "seek"],
+        "carpool.html", event_title=EVENT_TITLE, days=days, errors=errors, form=form, role=role, day=day,
         own=set(own_tokens()),
     ), status
 
@@ -850,9 +860,16 @@ def handle_csrf(e):
                            event_title=EVENT_TITLE), 403
 
 # ---------- CLI ----------
+def create_tables():
+    db.create_all()
+    # create_all ergänzt keine Spalten in bestehenden Tabellen: Tag der Mitfahrbörse nachrüsten
+    if "day" not in {c["name"] for c in inspect(db.engine).get_columns("ride")}:
+        db.session.execute(text("ALTER TABLE ride ADD COLUMN day VARCHAR(3) NOT NULL DEFAULT 'fri'"))
+        db.session.commit()
+
 @app.cli.command("init-db")
 def init_db():
-    db.create_all()
+    create_tables()
     print("Datenbank initialisiert.")
 
 @app.cli.command("alter-db-add-days-contrib")
@@ -959,5 +976,5 @@ def purge_rides(yes):
 # ---------- Run ----------
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
+        create_tables()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=os.getenv("FLASK_DEBUG","0")=="1")

@@ -7,24 +7,28 @@
     <div class="container">
         <h2 class="section-title">Mitfahrbörse</h2>
         <p class="section-subtitle muted">
-            Freitag, {{ friday_start.strftime('%d.%m.') }}, ab {{ friday_start.strftime('%H') }} Uhr, Krähenlochhütte in Gutmadingen.
-            Fahrt anbieten oder Mitfahrt suchen und direkt Kontakt aufnehmen.
+            Fahrt anbieten oder Mitfahrt suchen und direkt Kontakt aufnehmen, für Freitag und Samstag.
         </p>
 
+        {% for d in days %}
+        <h3 class="ride-day" id="{{ 'freitag' if d.key == 'fri' else 'samstag' }}">
+            {{ DAY_LABELS[d.key] }}, {{ d.start.strftime('%d.%m.') }}, {{ DAY_DEST[d.key] }}
+        </h3>
         <div class="ride-columns">
             <div class="ride-column">
-                <h3>🚗 Fahrer:innen</h3>
-                {% for r in offers %}{{ ride_card(r) }}{% else %}
+                <h4>🚗 Fahrer:innen</h4>
+                {% for r in d.offers %}{{ ride_card(r) }}{% else %}
                 <p class="muted">Noch keine Einträge.</p>
                 {% endfor %}
             </div>
             <div class="ride-column">
-                <h3>🙋 Mitfahrer:innen</h3>
-                {% for r in seeks %}{{ ride_card(r) }}{% else %}
+                <h4>🙋 Mitfahrer:innen</h4>
+                {% for r in d.seeks %}{{ ride_card(r) }}{% else %}
                 <p class="muted">Noch keine Einträge.</p>
                 {% endfor %}
             </div>
         </div>
+        {% endfor %}
     </div>
 </section>
 
@@ -53,6 +57,14 @@
             </div>
 
             <div class="grid">
+                <label>
+                    <span>Für welchen Tag? *</span>
+                    <select name="day">
+                        {% for key, label in DAY_LABELS.items() %}
+                        <option value="{{ key }}" {% if day == key %}selected{% endif %}>{{ label }} ({{ DAY_DEST[key] }})</option>
+                        {% endfor %}
+                    </select>
+                </label>
                 <label>
                     <span>Name (Vorname reicht) *</span>
                     <input type="text" name="name" maxlength="60" value="{{ form.get('name', '') }}" required>

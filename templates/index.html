@@ -132,7 +132,12 @@
                 <time class="timeline__time" datetime="{{ saturday_start.strftime('%Y-%m-%dT12:30') }}">12:30</time>
                 <div class="timeline__card">
                     <h3 class="timeline__title">Empfang</h3>
-                    <p class="timeline__text">Sektempfang & Häppchen, Gruppenfotos & gute Laune.</p>
+                    <p class="timeline__text">
+                        Sektempfang & Häppchen, Gruppenfotos & gute Laune.
+                        {% if carpool_enabled %}
+                        <br /><a href="{{ url_for('carpool', tag='samstag') }}#eintragen">Fahrgemeinschaft bilden →</a>
+                        {% endif %}
+                    </p>
                 </div>
             </li>
 

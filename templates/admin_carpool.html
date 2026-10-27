@@ -9,7 +9,7 @@
       <table class="ride-table">
         <thead>
           <tr>
-            <th>Datum</th><th>Rolle</th><th>Name</th><th>Startort</th><th>Wann</th><th>Plätze</th>
+            <th>Datum</th><th>Tag</th><th>Rolle</th><th>Name</th><th>Startort</th><th>Wann</th><th>Plätze</th>
             <th>Telefon</th><th>E-Mail</th><th>Notiz</th><th>Status</th><th></th>
           </tr>
         </thead>
@@ -17,6 +17,7 @@
           {% for r in rides %}
           <tr>
             <td>{{ r.created_at.strftime("%d.%m.%y %H:%M") if r.created_at else "" }}</td>
+            <td>{{ DAY_LABELS[r.day] }}</td>
             <td>{{ KIND_LABELS[r.kind] }}</td>
             <td><strong>{{ r.name }}</strong></td>
             <td>{{ r.origin }}</td>
@@ -36,7 +37,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="11" class="muted">Keine Einträge.</td></tr>
+          <tr><td colspan="12"class="muted">Keine Einträge.</td></tr>
           {% endfor %}
         </tbody>
       </table>

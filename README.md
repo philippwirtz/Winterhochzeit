@@ -69,12 +69,14 @@ setzt die App Cookies nur über https (Produktion).
 - CSV-Export: `/admin/export.csv` (Trennzeichen `;`, deutsche Beschriftungen).
 - Passwortversuche sind begrenzt (10 pro Minute und IP), alle Formulare sind CSRF-geschützt.
 
-## Mitfahrbörse (Freitagabend)
+## Mitfahrbörse (Freitag und Samstag)
 
-Unter `/mitfahrt` (Menüpunkt "Mitfahrt", Link in der Freitags-Karte der Zeitleiste) bieten Gäste
-eine Fahrt zur Krähenlochhütte an oder suchen eine Mitfahrt.
+Unter `/mitfahrt` (Menüpunkt "Mitfahrt", Links in der Freitags- und Samstags-Karte der Zeitleiste)
+bieten Gäste eine Fahrt an oder suchen eine Mitfahrt. Freitag geht es zur Krähenlochhütte,
+Samstag zum Kurgarten Bad Dürrheim. Ein Eintrag gilt für genau einen Tag, Treffer gibt es nur
+innerhalb desselben Tages.
 
-- **Eintrag:** Rolle (🚗 Ich fahre / 🙋 Ich suche), Vorname, Startort/PLZ, Hin-/Rückfahrt,
+- **Eintrag:** Rolle (🚗 Ich fahre / 🙋 Ich suche), Tag (Freitag/Samstag), Vorname, Startort/PLZ, Hin-/Rückfahrt,
   optional Abfahrtszeit, freie Plätze bzw. Personenzahl, Telefon und/oder E-Mail, Notiz.
   Pflicht-Checkbox: Kontaktdaten sind für alle Gäste mit Zugangscode sichtbar.
 - **Verwaltung ohne Konto:** Nach dem Eintragen gibt es einen privaten Link
@@ -85,7 +87,8 @@ eine Fahrt zur Krähenlochhütte an oder suchen eine Mitfahrt.
 - **Admin:** `/admin/mitfahrt` listet alle Einträge (auch geschlossene) mit Löschen-Button.
 - **Nach der Feier:** `flask --app app.py purge-rides` zeigt die Anzahl, mit `--yes` werden alle
   Einträge gelöscht. Alternativ `CARPOOL_ENABLED=0` setzen, um die Seite abzuschalten.
-- Die Tabelle `ride` wird beim Start automatisch angelegt (`init-db`), eine Migration ist nicht nötig.
+- Die Tabelle `ride` wird beim Start automatisch angelegt (`init-db`). Fehlt in einer älteren
+  Datenbank die Spalte `day`, ergänzt `init-db` sie; bestehende Einträge gelten als Freitag.
 
 ## Betrieb (Docker + Caddy)
 

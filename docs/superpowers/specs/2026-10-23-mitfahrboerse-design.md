@@ -13,7 +13,9 @@ WhatsApp, Anruf oder E-Mail Kontakt aufnehmen.
 
 ## Festlegungen aus der Abstimmung
 
-- Nur Freitag, Hin- und Rückfahrt. Keine Samstagsfahrten.
+- Freitag, Hin- und Rückfahrt. Nachtrag 2026-10-27: Fahrten gelten auch für Samstag (Ziel Kurgarten
+  Bad Dürrheim). Jeder Eintrag hat genau einen Tag (`day`: `fri`/`sat`, Standard `fri`), Treffer gibt es
+  nur innerhalb desselben Tages; `init-db` rüstet die Spalte in bestehenden Datenbanken nach.
 - Kontaktdaten (Telefon/E-Mail) sind für alle Gäste mit Zugangscode sichtbar, hinter einem
   aufklappbaren "Kontakt anzeigen". Wer einträgt, willigt per Pflicht-Checkbox ein.
 - Keine neuen Konten, keine externen Dienste, kein Mailversand durch den Server.
@@ -22,7 +24,7 @@ WhatsApp, Anruf oder E-Mail Kontakt aufnehmen.
 ## Nicht enthalten
 
 Mailversand durch den Server, Benutzerkonten, Karte/Geocoding/Entfernungsberechnung,
-Samstagsfahrten, Chat, automatisches Ausblenden nach dem Freitag, JavaScript-Single-Page.
+Chat, automatisches Ausblenden nach dem Freitag, JavaScript-Single-Page.
 (Nach dem Fest: `flask purge-rides` oder `CARPOOL_ENABLED=0`.)
 
 ## Architektur

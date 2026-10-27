@@ -154,7 +154,7 @@ class Env:
 
 
 def insert_ride(env, **fields):
-    row = dict(token=secrets.token_hex(16), kind="offer", name="Test", origin="Villingen", direction="both",
+    row = dict(token=secrets.token_hex(16), kind="offer", name="Test", origin="Villingen", day="fri", direction="both",
                depart_time="", seats=3, seats_taken=0, phone="", email="t@example.com", note="",
                consent=1, active=1)
     row.update(fields)
@@ -180,7 +180,7 @@ RIDE_PATH = re.compile(r"/mitfahrt/mein/[0-9a-f]{32}$")
 
 def ride_poster(client, tok):
     def post(**over):
-        data = dict(csrf_token=tok, kind="offer", name="Anna", origin="78050 Villingen", direction="both",
+        data = dict(csrf_token=tok, kind="offer", name="Anna", origin="78050 Villingen", day="fri", direction="both",
                     depart_time="", seats="3", phone="", email="anna@example.com", note="", consent="on",
                     website="")
         data.update(over)
@@ -254,8 +254,55 @@ def phase_carpool():
         _, _, b = req(c, "/mitfahrt")
         check("Volles Angebot zeigt Badge 'Voll'", "Voll Vera" in b and re.search(r">\s*Voll\s*<", b) is not None)
         check("Inaktiver Eintrag erscheint nicht", "Inaktiv Ida" not in b)
+
+        # --- Samstag ---
+        _, _, b = req(c, "/mitfahrt")
+        check("Übersicht: Abschnitte Freitag und Samstag mit Ziel",
+              "Freitag, 04.12., Krähenlochhütte" in b and "Samstag, 05.12., Kurgarten Bad Dürrheim" in b)
+        check("Formular: Tag-Auswahl, Freitag vorgewählt",
+              re.search(r'<option value="fri"\s+selected', b) is not None and 'value="sat"' in b)
+        _, _, b2 = req(c, "/mitfahrt?tag=samstag")
+        check("?tag=samstag wählt Samstag im Formular vor", re.search(r'<option value="sat"\s+selected', b2) is not None)
+        s, _, _ = post(name="Samstag Sabine", email="sabine@example.com", day="sat", origin="Konstanz")
+        _, _, b = req(c, "/mitfahrt")
+        fri_part, _, sat_part = b.partition('id="samstag"')
+        check("Samstagseintrag steht im Samstags-Abschnitt, nicht im Freitags-Abschnitt",
+              s == 302 and "Samstag Sabine" in sat_part and "Samstag Sabine" not in fri_part
+              and db_scalar(e, "SELECT day FROM ride WHERE name='Samstag Sabine'") == "sat")
+        check("Freitagseintrag steht im Freitags-Abschnitt", "Anna" in fri_part and "Anna" not in sat_part)
+        s, _, eb = post(name="Ohne Tag", email="ohnetag@example.com", day="")
+        check("Fehler ohne Tag: 400 und nichts gespeichert",
+              s == 400 and "Freitag oder Samstag" in eb
+              and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Ohne Tag'") == 0, f"{s}")
+        s, _, _ = post(name="Doppel Dora", email="dd@example.com", day="fri")
+        s2, _, _ = post(name="Doppel Dora", email="dd@example.com", day="sat")
+        check("Gleiche Angaben an anderem Tag sind ein eigener Eintrag",
+              s == s2 == 302 and db_scalar(e, "SELECT COUNT(*) FROM ride WHERE name='Doppel Dora'") == 2)
     finally:
         e.stop()
+
+
+def phase_carpool_migration():
+    print("\n=== Phase C4: Mitfahrbörse (Spalte 'day' in bestehender Datenbank) ===")
+    e = Env("2099-12-31")
+    try:
+        con = sqlite3.connect(e.db)
+        con.execute("CREATE TABLE ride (id INTEGER PRIMARY KEY, token VARCHAR(32) NOT NULL UNIQUE, kind VARCHAR(5) NOT NULL, "
+                    "name VARCHAR(60) NOT NULL, origin VARCHAR(80) NOT NULL, direction VARCHAR(4) NOT NULL, "
+                    "depart_time VARCHAR(30) NOT NULL DEFAULT '', seats INTEGER NOT NULL, seats_taken INTEGER NOT NULL DEFAULT 0, "
+                    "phone VARCHAR(40) NOT NULL DEFAULT '', email VARCHAR(120) NOT NULL DEFAULT '', note VARCHAR(200) NOT NULL DEFAULT '', "
+                    "consent BOOLEAN NOT NULL DEFAULT 0, active BOOLEAN NOT NULL DEFAULT 1, created_at DATETIME)")
+        con.execute("INSERT INTO ride (token, kind, name, origin, direction, seats) VALUES (?, 'offer', 'Alt Alfred', 'Villingen', 'both', 2)",
+                    (secrets.token_hex(16),))
+        con.commit()
+        con.close()
+        out = e.cli("init-db")
+        check("init-db ergänzt die Spalte 'day', bestehende Einträge gelten als Freitag",
+              "Datenbank initialisiert" in out and db_scalar(e, "SELECT day FROM ride WHERE name='Alt Alfred'") == "fri", out[-200:])
+        out = e.cli("init-db")
+        check("init-db ist wiederholbar", "Datenbank initialisiert" in out and "Error" not in out, out[-200:])
+    finally:
+        e.tmp.cleanup()
 
 
 def phase_carpool_manage():
@@ -486,7 +533,9 @@ def phase_open():
         check("Kopfzeile: Menüpunkt 'Mitfahrt'", '<a href="/mitfahrt">Mitfahrt</a>' in b)
         check("Freitags-Karte verlinkt die Fahrgemeinschaft",
               re.search(r'Krähenlochhütte</h3>.*?href="/mitfahrt"[^>]*>Fahrgemeinschaft', b, re.S) is not None)
-        check("CSS-Cache-Parameter ?v=18", "styles.css?v=18" in b)
+        check("Samstags-Karte (Empfang) verlinkt die Fahrgemeinschaft für Samstag",
+              re.search(r'Empfang</h3>.*?href="/mitfahrt\?tag=samstag#eintragen"[^>]*>Fahrgemeinschaft', b, re.S) is not None)
+        check("CSS-Cache-Parameter ?v=19", "styles.css?v=19" in b)
         s, _, pb = req(c, "/privacy")
         check("Datenschutzseite nennt die Mitfahrbörse",
               s == 200 and "Mitfahrbörse" in pb and "Zugangscode" in pb)
@@ -687,7 +736,7 @@ def phase_unit():
     counter = iter(range(1, 1000))
 
     def R(**kw):
-        base = dict(id=next(counter), kind="offer", name="Anna", origin="Villingen", direction="both",
+        base = dict(id=next(counter), kind="offer", name="Anna", origin="Villingen", day="fri", direction="both",
                     depart_time="", seats=3, seats_taken=0, phone="", email="", note="", active=True,
                     created_at=t0)
         base.update(kw)
@@ -737,11 +786,25 @@ def phase_unit():
     m, o = carpool.find_matches(offer, [k2, k3])
     check("Match: Platzregel gilt auch aus Sicht des Angebots", ids(m) == [k2.id] and ids(o) == [], f"{ids(m)} {ids(o)}")
 
+    Ssat = R(kind="seek", direction="both", seats=1, day="sat")
+    Ofri = R(origin="Villingen", day="fri")
+    Osat = R(origin="Villingen", day="sat")
+    m, o = carpool.find_matches(Ssat, [Ofri, Osat])
+    check("Match: nur Einträge desselben Tages", ids(m) == [Osat.id] and ids(o) == [], f"{ids(m)} {ids(o)}")
+    m, o = carpool.find_matches(R(kind="seek", direction="both", seats=1, day="fri"), [Osat])
+    check("Match: Samstagsangebot erscheint nicht einmal unter 'others' für Freitag", m == [] and o == [])
+
     # --- Nachricht und Kontakt-Links ---
     msg_offer = carpool.message_text(R(kind="offer", name="Anna"))
     msg_seek = carpool.message_text(R(kind="seek", name="Ben", origin="Villingen"))
     check("Nachricht: Fahrtangebot", "Fahrtangebot" in msg_offer and "Anna" in msg_offer and "Krähenlochhütte" in msg_offer)
     check("Nachricht: Mitfahr-Anfrage", "Mitfahr-Anfrage" in msg_seek and "Villingen" in msg_seek)
+    msg_sat = carpool.message_text(R(kind="offer", name="Anna", day="sat"))
+    check("Nachricht: Freitag nennt Freitag, Samstag nennt Samstag und Kurgarten",
+          "Freitag" in msg_offer and "Samstag" not in msg_offer
+          and "Samstag (Kurgarten Bad Dürrheim)" in msg_sat and "Krähenlochhütte" not in msg_sat)
+    mail_sat = carpool.contact_links(R(day="sat", email="a@example.com"))[0]["href"]
+    check("Links: E-Mail-Betreff nennt Samstag", "subject=Fahrgemeinschaft%20Samstag%20%28Kurgarten" in mail_sat, mail_sat[:90])
     both = carpool.contact_links(R(phone="0176 1234567", email="anna@example.com"))
     check("Links: Reihenfolge und Arten bei Telefon+E-Mail", [x["kind"] for x in both] == ["whatsapp", "tel", "mail"], str(both))
     hrefs = {x["kind"]: x["href"] for x in both}
@@ -758,7 +821,7 @@ def phase_unit():
         return "@" in a and "." in a.split("@")[-1] and " " not in a
 
     def F(**over):
-        f = dict(kind="offer", name="Anna", origin="78050 Villingen", direction="both", depart_time="ca. 16:00",
+        f = dict(kind="offer", name="Anna", origin="78050 Villingen", day="fri", direction="both", depart_time="ca. 16:00",
                  seats="3", phone="", email="anna@example.com", note="", consent="on")
         f.update(over)
         return f
@@ -777,6 +840,9 @@ def phase_unit():
     check("Validierung: Angebot mit 0 oder 9 Plätzen", errs(seats="0") != [] and errs(seats="9") != [])
     check("Validierung: Suche mit 7 Personen oder Text", errs(kind="seek", seats="7") != [] and errs(seats="viele") != [])
     check("Validierung: ungültige Rolle/Richtung", errs(kind="x") != [] and errs(direction="x") != [])
+    check("Validierung: Tag Freitag/Samstag gültig, sonst Fehler",
+          errs(day="sat") == [] and carpool.validate_ride_input(F(day="sat"), email_ok)[0]["day"] == "sat"
+          and any("Freitag oder Samstag" in x for x in errs(day="")) and errs(day="sun") != [])
     check("Validierung: Name auf 60 Zeichen gekürzt", len(carpool.validate_ride_input(F(name="a" * 100), email_ok)[0]["name"]) == 60)
     check("Validierung: Emoji bleiben erhalten", carpool.validate_ride_input(F(name="Anna 🚗"), email_ok)[0]["name"] == "Anna 🚗")
 
@@ -789,6 +855,7 @@ if __name__ == "__main__":
         phase_carpool()
         phase_carpool_manage()
         phase_carpool_admin()
+        phase_carpool_migration()
         phase_carpool_limit()
     except SystemExit as ex:
         print(ex)
