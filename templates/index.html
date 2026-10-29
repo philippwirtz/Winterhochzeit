@@ -298,7 +298,7 @@
     <div class="container">
         {% if rsvp_open %}
         <h2>RSVP bis {{ rsvp_deadline.strftime("%d.%m.%Y") }}</h2>
-        <form action="{{ url_for('submit_rsvp') }}" method="post" novalidate>
+        <form action="{{ url_for('submit_rsvp') }}" method="post" class="rsvp-form" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="grid">
@@ -483,6 +483,20 @@
   toggleMeal();
   // Reagieren auf Änderungen
   attendance.addEventListener('change', toggleMeal);
+
+  // Doppelklick: den Absenden-Button sperren, sonst entstehen zwei Antworten
+  var rsvpForm = document.querySelector('.rsvp-form');
+  if (rsvpForm) {
+    rsvpForm.addEventListener('submit', function () {
+      var btn = rsvpForm.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Wird gesendet …'; }
+    });
+    // Zurück-Taste nach Fehlerseite: Browser-Cache würde den Button gesperrt lassen
+    window.addEventListener('pageshow', function () {
+      var btn = rsvpForm.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = false; btn.textContent = 'Absenden'; }
+    });
+  }
 })();
 </script>
 

@@ -19,6 +19,7 @@ import qrcode
 import qrcode.image.svg
 
 import carpool
+from carpool import clean_text
 
 from flask import (
     Flask, render_template, request, redirect, url_for, make_response,
@@ -29,7 +30,7 @@ from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from sqlalchemy.sql import func, or_, desc
+from sqlalchemy.sql import func, or_
 from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -83,7 +84,9 @@ app.config.update(
 
 # Admin-Login (Session-basiert)
 ADMIN_USER  = os.getenv("ADMIN_USER", "admin")
-ADMIN_PASS  = os.getenv("ADMIN_PASS", "changeme")
+ADMIN_PASS  = os.getenv("ADMIN_PASS")
+if not ADMIN_PASS:
+    raise RuntimeError("ADMIN_PASS fehlt (setze ihn in .env / Environment)")
 ADMIN_REMEMBER_SECONDS = 30 * 24 * 3600
 ADMIN_SESSION_SECONDS = 8 * 3600
 
@@ -126,18 +129,6 @@ def parse_local_date(s: str) -> datetime:
     except ValueError:
         return datetime(2099, 1, 1, 0, 0)
 
-def remaining(event_dt: datetime) -> dict:
-    now = datetime.now()
-    diff = event_dt - now
-    if diff.total_seconds() <= 0:
-        return {"days": 0, "hours": 0, "minutes": 0, "seconds": 0, "over": True}
-    seconds = int(diff.total_seconds())
-    days = seconds // 86400
-    hours = (seconds % 86400) // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-    return {"days": days, "hours": hours, "minutes": minutes, "seconds": secs, "over": False}
-
 def valid_email(addr: str) -> bool:
     return re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", addr or "") is not None
 
@@ -148,10 +139,6 @@ def safe_csv_cell(v: str | None) -> str:
     if v[0] in ("=", "+", "-", "@"):
         return "'" + v
     return v
-
-def clean_text(value: str | None, max_len: int) -> str:
-    # Einzeilig, Whitespace normalisiert. Kein HTML-Escaping: das übernimmt Jinja beim Rendern.
-    return " ".join((value or "").split())[:max_len]
 
 EVENT_DT = parse_local_date(EVENT_DATETIME_STR)
 RSVP_DEADLINE = parse_local_date(RSVP_DEADLINE_STR).date()
@@ -181,7 +168,7 @@ class RSVP(db.Model):
     notes = db.Column(db.String(500))
     song = db.Column(db.String(300))
     consent = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.now, server_default=func.now())
     attendance_days = db.Column(db.String(10), nullable=False, default="sat")  # "fri" | "sat" | "both"
     contribution = db.Column(db.String(300))  # Salat/Kuchen etc.
     meal_choice = db.Column(db.String(20))  # "vegetarian" | "meat"
@@ -202,9 +189,12 @@ class Ride(db.Model):
     note = db.Column(db.String(200), nullable=False, default="")
     consent = db.Column(db.Boolean, nullable=False, default=False)
     active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.now, server_default=func.now())
 
 # ---------- E-Mail ----------
+DAY_LABELS = {"fri": "Freitag", "sat": "Samstag", "both": "Freitag & Samstag"}
+MEAL_LABELS = {"vegetarian": "Vegetarisch", "meat": "Mit Fleisch"}
+
 def send_rsvp_mail(entry: RSVP):
     host = os.getenv("SMTP_HOST")
     port = int(os.getenv("SMTP_PORT", "587"))
@@ -233,12 +223,12 @@ def send_rsvp_mail(entry: RSVP):
         f"Name: {entry.name}",
         f"E-Mail: {entry.email}",
         f"Status: {'Zusage' if entry.attendance=='yes' else 'Absage'}",
-        f"Tage: {entry.attendance_days or '-'}",
-        f"Spende: {entry.contribution or '-'}",
+        f"Tage: {DAY_LABELS.get(entry.attendance_days, '-')}",
+        f"Mitbringsel: {entry.contribution or '-'}",
         f"Personen: {entry.guests}",
         f"Notizen: {entry.notes or '-'}",
         f"Zeitpunkt: {entry.created_at}",
-        f"Essen: {entry.meal_choice or '-'}",
+        f"Essen: {MEAL_LABELS.get(entry.meal_choice, '-')}",
     ]
     msg.set_content("\n".join(body))
 
@@ -267,18 +257,18 @@ def send_rsvp_mail(entry: RSVP):
 def admin_logged_in() -> bool:
     return int(session.get("admin_exp", 0)) > time.time()
 
-def safe_next(nxt: str) -> str:
+def safe_next(nxt: str, fallback: str | None = None) -> str:
     nxt = (nxt or "").strip()
     if nxt.startswith("/") and not nxt.startswith("//") and "\\" not in nxt:
         return nxt
-    return url_for("admin_dashboard")
+    return fallback or url_for("admin_dashboard")
 
 def admin_back() -> str:
     ref = request.referrer or ""
     parts = urlparse(ref)
     if parts.netloc == request.host and parts.path.startswith("/admin"):
         return parts.path + (f"?{parts.query}" if parts.query else "")
-    return url_for("admin_rsvps")
+    return url_for("admin_dashboard")
 
 def admin_protected(view):
     @wraps(view)
@@ -320,14 +310,14 @@ def healthz():
     return "ok", 200
 
 @app.route("/gate", methods=["GET", "POST"])
-@limiter.limit("20/hour")
+@limiter.limit("20/hour", methods=["POST"])
 def gate():
     # Gate aus → direkt weiterleiten
     if not GATE_ENABLED:
         return redirect(url_for("index"))
 
     error = None
-    nxt = request.args.get("next") or url_for("index")
+    nxt = safe_next(request.args.get("next"), url_for("index"))
 
     if request.method == "POST":
         # CSRF: automatisch geprüft durch CSRFProtect
@@ -348,14 +338,12 @@ def logout():
 
 @app.route("/")
 def index():
-    timeleft = remaining(EVENT_DT)
     return render_template(
         "index.html",
         event_title=EVENT_TITLE,
         event_dt=EVENT_DT,
         event_location_name=EVENT_LOCATION_NAME,
         event_location_address=EVENT_LOCATION_ADDRESS,
-        timeleft=timeleft,
         rsvp_deadline=RSVP_DEADLINE,
         friday_start=FRIDAY_START,
         saturday_start=SATURDAY_START,
@@ -373,7 +361,6 @@ def submit_rsvp():
     attendance = (request.form.get("attendance") or "").strip()
     guests_raw = (request.form.get("guests") or "1").strip()
     notes = clean_text(request.form.get("notes"), 500)
-    song = clean_text(request.form.get("song"), 300)
     consent = request.form.get("consent") == "on"
     attendance_days = (request.form.get("attendance_days") or "").strip()
     contribution = clean_text(request.form.get("contribution"), 300)
@@ -423,7 +410,6 @@ def submit_rsvp():
         attendance=attendance,
         guests=guests,
         notes=notes,
-        song=song or None,
         consent=consent,
         attendance_days=attendance_days,
         contribution=contribution,
@@ -444,8 +430,6 @@ def submit_rsvp():
 def thank_you():
     name = request.args.get("name", "")
     return render_template("thank_you.html", name=name, event_title=EVENT_TITLE)
-
-INVITED_TOTAL = int(os.getenv("INVITED_TOTAL", "0"))
 
 @app.route("/admin/login", methods=["GET", "POST"])
 @limiter.limit("10/minute", methods=["POST"])
@@ -488,8 +472,8 @@ def admin_dashboard():
     meal       = (request.args.get("meal") or "").strip()
     q          = (request.args.get("q") or "").strip()
     order      = (request.args.get("order") or "created_desc").strip()
-    page       = max(int(request.args.get("page", 1)), 1)
-    per_page   = max(min(int(request.args.get("per_page", 25)), 200), 5)
+    page       = max(request.args.get("page", 1, type=int), 1)
+    per_page   = max(min(request.args.get("per_page", 25, type=int), 200), 5)
 
     total      = db.session.query(RSVP).count()
     yes_count  = db.session.query(RSVP).filter(RSVP.attendance == "yes").count()
@@ -546,41 +530,14 @@ def admin_dashboard():
         page=page, pages=pages, per_page=per_page
     )
 
-@app.route("/admin/rsvps")
-@limiter.limit("60/minute")
-@admin_protected
-def admin_rsvps():
-    attendance = (request.args.get("attendance") or "").strip()
-    q = (request.args.get("q") or "").strip()
-    page = max(int(request.args.get("page", 1)), 1)
-    per_page = 25
-
-    query = RSVP.query.order_by(desc(RSVP.created_at))
-    if attendance in ("yes", "no"):
-        query = query.filter(RSVP.attendance == attendance)
-    if q:
-        like = f"%{q}%"
-        query = query.filter(or_(RSVP.name.ilike(like),
-                                 RSVP.email.ilike(like),
-                                 RSVP.notes.ilike(like)))
-
-    total = query.count()
-    rsvps = query.offset((page - 1)*per_page).limit(per_page).all()
-    pages = (total + per_page - 1)//per_page
-
-    return render_template("admin_rsvps.html",
-                           rsvps=rsvps, total=total, page=page, pages=pages,
-                           per_page=per_page, attendance=attendance, q=q,
-                           event_title=EVENT_TITLE)
-
 @app.route("/admin/rsvps/update", methods=["POST"])
 @limiter.limit("60/minute")
 @admin_protected
 def admin_rsvps_update():
-    rid = request.form.get("id")
-    if not rid:
+    rid = request.form.get("id", type=int)
+    if rid is None:
         abort(400)
-    r = RSVP.query.get(int(rid))
+    r = db.session.get(RSVP, rid)
     if not r:
         abort(404)
 
@@ -624,10 +581,10 @@ def admin_rsvps_update():
 @limiter.limit("60/minute")
 @admin_protected
 def admin_rsvps_delete():
-    rid = request.form.get("id")
-    if not rid:
+    rid = request.form.get("id", type=int)
+    if rid is None:
         abort(400)
-    r = RSVP.query.get(int(rid))
+    r = db.session.get(RSVP, rid)
     if not r:
         abort(404)
 
@@ -635,16 +592,12 @@ def admin_rsvps_delete():
     db.session.commit()
     return redirect(admin_back())
 
-DAY_LABELS = {"fri": "Freitag", "sat": "Samstag", "both": "Freitag & Samstag"}
-MEAL_LABELS = {"vegetarian": "Vegetarisch", "meat": "Mit Fleisch"}
-
 @app.route("/admin/export.csv")
 @limiter.limit("5/minute")
 @admin_protected
 def export_csv():
     rows = RSVP.query.order_by(RSVP.created_at.desc()).all()
 
-    import io
     buf = io.StringIO(newline="")
     writer = csv.writer(buf, delimiter=";")
     writer.writerow(["Datum", "Name", "E-Mail", "Status", "Tage", "Personen", "Spende", "Essen", "Notizen"])

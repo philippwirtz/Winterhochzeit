@@ -503,6 +503,12 @@ def phase_open():
         check("ohne Gate: /admin -> Gate", s == 302 and "/gate" in h["Location"], f"{s}")
         check("Gate-Code akzeptiert", pass_gate(c))
 
+        g = new_client()
+        codes = [req(g, "/gate")[0] for _ in range(25)]
+        check("Gate: Seitenaufrufe zählen nicht ins Limit (geteiltes WLAN)", codes == [200] * 25, f"{codes[-3:]}")
+        s, h, _ = req(g, "/gate?next=https://evil.example/x", {"csrf_token": csrf(req(g, "/gate")[2]), "code": GATE})
+        check("Gate: next auf fremde Seite wird ignoriert", s == 302 and "evil.example" not in h["Location"], h.get("Location"))
+
         s, _, b = req(c, "/")
         check("Startseite erreichbar", s == 200)
         check("RSVP offen: Formular sichtbar", 'action="/rsvp"' in b)
@@ -544,7 +550,7 @@ def phase_open():
         check("Kopfzeile verlinkt auf Startseite (/#ablauf)", 'href="/#ablauf"' in b)
 
         # --- Zugriffsschutz ---
-        for path in ("/admin", "/admin/export.csv", "/admin/rsvps"):
+        for path in ("/admin", "/admin/export.csv"):
             s, h, _ = req(c, path)
             check(f"{path} ohne Login geschützt", s == 302 and "/admin/login" in h["Location"], f"{s}")
 

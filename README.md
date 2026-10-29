@@ -42,7 +42,7 @@ setzt die App Cookies nur über https (Produktion).
 | Variable | Bedeutung | Standard |
 |---|---|---|
 | `SECRET_KEY` | Signiert Sessions und CSRF-Token. **Pflicht**, die App startet sonst nicht. | – |
-| `ADMIN_USER` / `ADMIN_PASS` | Zugang zum Admin-Bereich. **Unbedingt setzen**, sonst gilt `admin` / `changeme`. | `admin` / `changeme` |
+| `ADMIN_USER` / `ADMIN_PASS` | Zugang zum Admin-Bereich. `ADMIN_PASS` ist **Pflicht**, die App startet sonst nicht. | `admin` / – |
 | `GATE_ENABLED` | `1` = Zugangscode für die ganze Seite, `0` = aus | `1` |
 | `ACCESS_CODE` | Gemeinsamer Code für alle Gäste. Bei aktivem Gate nötig, sonst kommt niemand hinein. | leer |
 | `EVENT_TITLE` | Titel der Seite | `Winterhochzeit Jasmin & Philipp` |

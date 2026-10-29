@@ -17,7 +17,8 @@ SEATS_MAX = {"offer": 8, "seek": 6}
 _PHONE_ALLOWED = re.compile(r"[0-9+\-()/ ]+")
 
 
-def _clean(value: str | None, max_len: int) -> str:
+def clean_text(value: str | None, max_len: int) -> str:
+    # Einzeilig, Whitespace normalisiert. Kein HTML-Escaping: das übernimmt Jinja beim Rendern.
     return " ".join((value or "").split())[:max_len]
 
 
@@ -104,15 +105,15 @@ def validate_ride_input(form: Mapping[str, str], valid_email: Callable[[str], bo
 
     cleaned = {
         "kind": get("kind").strip(),
-        "name": _clean(get("name"), 60),
-        "origin": _clean(get("origin"), 80),
+        "name": clean_text(get("name"), 60),
+        "origin": clean_text(get("origin"), 80),
         "day": get("day").strip(),
         "direction": get("direction").strip(),
-        "depart_time": _clean(get("depart_time"), 30),
+        "depart_time": clean_text(get("depart_time"), 30),
         "seats": 0,
-        "phone": _clean(get("phone"), 40),
-        "email": _clean(get("email"), 120),
-        "note": _clean(get("note"), 200),
+        "phone": clean_text(get("phone"), 40),
+        "email": clean_text(get("email"), 120),
+        "note": clean_text(get("note"), 200),
     }
     errors = []
     kind = cleaned["kind"]

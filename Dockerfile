@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # System-Tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates tini && \
+    curl ca-certificates tini tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -27,15 +27,16 @@ USER appuser
 ENV FLASK_APP=app.py \
     ENV=production \
     FORCE_HTTPS=1 \
+    TZ=Europe/Berlin \
     GATE_ENABLED=1
 
 EXPOSE 8000
 
 # Healthcheck: App antwortet?
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -fsS http://localhost:8000/ || exit 1
+    CMD curl -fsS http://localhost:8000/healthz || exit 1
 
 # Entrypoint: DB init (idempotent) -> Gunicorn
 ENTRYPOINT ["/usr/bin/tini","--"]
 CMD ["/bin/sh","-lc","flask --app app.py init-db >/dev/null 2>&1 || true && \
-    exec gunicorn -w 3 -k gthread -b 0.0.0.0:8000 app:app --timeout 60 --access-logfile - --error-logfile -"]
+    exec gunicorn -w 1 --threads 8 -k gthread -b 0.0.0.0:8000 app:app --timeout 60 --access-logfile - --error-logfile -"]

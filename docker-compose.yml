@@ -11,7 +11,7 @@ services:
       - ./static:/app/static         # optional: statische Assets direkt mappen
       - ./templates:/app/templates   # optional: Templates live editieren
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
